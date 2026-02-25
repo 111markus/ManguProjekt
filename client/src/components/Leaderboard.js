@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from "react";
 import { useGame } from "../context/GameContext";
 
 function Leaderboard() {
-  const { state, dispatch, loadScores, getSortedScores, deleteScore } = useGame();
+  const { state, dispatch, loadScores, getSortedScores, deleteScore } =
+    useGame();
   const tableRef = useRef(null);
 
   // useEffect — load scores from backend on mount
@@ -111,10 +112,7 @@ function Leaderboard() {
             <tbody>
               {/* Array mapping — render score rows */}
               {sortedScores.map((s, index) => (
-                <tr
-                  key={s.id}
-                  className={index < 3 ? `top-${index + 1}` : ""}
-                >
+                <tr key={s.id} className={index < 3 ? `top-${index + 1}` : ""}>
                   <td className="rank">
                     {index === 0 && "🥇"}
                     {index === 1 && "🥈"}

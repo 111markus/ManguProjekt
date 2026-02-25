@@ -1,44 +1,42 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useGame } from "../context/GameContext";
 
 // ─── Ball generation helpers ───
-function randomPosition(mode) {
-  const spread = mode === "precision" ? 5 : 7;
-  const x = (Math.random() - 0.5) * spread;
+function randomPosition() {
+  const x = (Math.random() - 0.5) * 7;
   const y = Math.random() * 2.5 + 0.8;
   const z = -(Math.random() * 4 + 4);
   return { x, y, z };
 }
 
-function getBallRadius(mode) {
-  if (mode === "precision") return 0.2 + Math.random() * 0.1;
-  if (mode === "speed") return 0.3 + Math.random() * 0.15;
+function getBallRadius() {
   return 0.3 + Math.random() * 0.2;
 }
 
 function getBallColor() {
   const colors = [
-    "#ff4444", "#ff6644", "#ff8800", "#ffaa00",
-    "#44ff44", "#44ffaa", "#4488ff", "#aa44ff",
-    "#ff44aa", "#ffff44",
+    "#ff4444",
+    "#ff6644",
+    "#ff8800",
+    "#ffaa00",
+    "#44ff44",
+    "#44ffaa",
+    "#4488ff",
+    "#aa44ff",
+    "#ff44aa",
+    "#ffff44",
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-function getPoints(radius, mode) {
-  const base = mode === "precision" ? 150 : mode === "speed" ? 75 : 100;
-  return Math.round(base * (0.35 / Math.max(radius, 0.1)));
+function getPoints(radius) {
+  return Math.round(100 * (0.35 / Math.max(radius, 0.1)));
 }
 
 // ─── Main Component ───
 function AimTrainer() {
   const { state, dispatch, saveScore } = useGame();
-  const { mode, duration } = state.gameSettings;
+  const { duration } = state.gameSettings;
 
   // Game state — only 1 ball at a time
   const [ball, setBall] = useState(null);
@@ -48,10 +46,15 @@ function AimTrainer() {
   const [timeLeft, setTimeLeft] = useState(duration);
   const [gameActive, setGameActive] = useState(false);
   const [gameOver, setGameOver] = useState(false);
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(0); // 0 = not counting
+  const [waitingToStart, setWaitingToStart] = useState(true); // NEW: wait for click
   const [scoreSaved, setScoreSaved] = useState(false);
   const [hitEffect, setHitEffect] = useState(null);
   const [popEffect, setPopEffect] = useState(null);
+  const [crosshairPos, setCrosshairPos] = useState({ x: 0, y: 0 });
+  const [pointerLocked, setPointerLocked] = useState(false);
+  const [showSettings, setShowSettings] = useState(false); // NEW: P-key menu
+  const [sensitivity, setSensitivity] = useState(1); // NEW: mouse sensitivity
 
   // Refs
   const sceneRef = useRef(null);
@@ -59,7 +62,9 @@ function AimTrainer() {
   const ballIdRef = useRef(0);
   const gameActiveRef = useRef(false);
   const ballTimeoutRef = useRef(null);
-  const ballRef = useRef(null); // current ball data for click handler
+  const ballRef = useRef(null);
+  const containerRef = useRef(null);
+  const sensitivityRef = useRef(1);
 
   // Keep refs in sync
   useEffect(() => {
@@ -68,32 +73,53 @@ function AimTrainer() {
   useEffect(() => {
     ballRef.current = ball;
   }, [ball]);
+  useEffect(() => {
+    sensitivityRef.current = sensitivity;
+  }, [sensitivity]);
 
-  const accuracy = hits + misses > 0 ? Math.round((hits / (hits + misses)) * 100) : 0;
+  const accuracy =
+    hits + misses > 0 ? Math.round((hits / (hits + misses)) * 100) : 0;
+
+  // ─── Track mouse for crosshair ───
+  useEffect(() => {
+    const onMouseMove = (e) => {
+      setCrosshairPos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    return () => window.removeEventListener("mousemove", onMouseMove);
+  }, []);
+
+  // ─── Track pointer lock state ───
+  useEffect(() => {
+    const onLockChange = () => {
+      setPointerLocked(!!document.pointerLockElement);
+    };
+    document.addEventListener("pointerlockchange", onLockChange);
+    return () => document.removeEventListener("pointerlockchange", onLockChange);
+  }, []);
 
   // ─── Spawn a single ball ───
   const spawnBall = useCallback(() => {
     if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
 
-    const pos = randomPosition(mode);
-    const radius = getBallRadius(mode);
+    const pos = randomPosition();
+    const radius = getBallRadius();
     const color = getBallColor();
-    const points = getPoints(radius, mode);
+    const points = getPoints(radius);
     const id = ++ballIdRef.current;
 
     setBall({ id, ...pos, radius, color, points });
 
-    // Auto-expire: miss + spawn next
-    const lifetime = mode === "speed" ? 1500 : mode === "precision" ? 4000 : 3000;
+    // Auto-expire after 3 seconds: miss + spawn next
     ballTimeoutRef.current = setTimeout(() => {
       if (gameActiveRef.current) {
         setMisses((prev) => prev + 1);
         spawnBall();
       }
-    }, lifetime);
-  }, [mode]);
+    }, 3000);
+  }, []);
 
-  // ─── Start game ───
+  // ─── Start game (called when user clicks "Click to Start") ───
   const startGame = useCallback(() => {
     setScore(0);
     setHits(0);
@@ -106,6 +132,8 @@ function AimTrainer() {
     setGameActive(false);
     setPopEffect(null);
     setHitEffect(null);
+    setWaitingToStart(false);
+    setShowSettings(false);
     ballIdRef.current = 0;
     if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
 
@@ -156,10 +184,19 @@ function AimTrainer() {
   // ─── Auto-save score on game over ───
   useEffect(() => {
     if (gameOver && !scoreSaved && score > 0) {
-      saveScore({ score, hits, misses, accuracy, mode, duration });
+      saveScore({ score, hits, misses, accuracy, mode: "classic", duration });
       setScoreSaved(true);
     }
-  }, [gameOver, scoreSaved, score, hits, misses, accuracy, mode, duration, saveScore]);
+  }, [
+    gameOver,
+    scoreSaved,
+    score,
+    hits,
+    misses,
+    accuracy,
+    duration,
+    saveScore,
+  ]);
 
   // ─── Handle ball hit ───
   const handleBallHit = useCallback(
@@ -170,7 +207,11 @@ function AimTrainer() {
       // Pop effect at ball position
       setBall((currentBall) => {
         if (currentBall && currentBall.id === ballId) {
-          setPopEffect({ x: currentBall.x, y: currentBall.y, z: currentBall.z });
+          setPopEffect({
+            x: currentBall.x,
+            y: currentBall.y,
+            z: currentBall.z,
+          });
           setTimeout(() => setPopEffect(null), 400);
         }
         return null;
@@ -179,7 +220,11 @@ function AimTrainer() {
       setScore((prev) => prev + points);
       setHits((prev) => prev + 1);
 
-      setHitEffect({ x: Math.random() * 60 + 20, y: Math.random() * 40 + 20, points });
+      setHitEffect({
+        x: Math.random() * 60 + 20,
+        y: Math.random() * 40 + 20,
+        points,
+      });
       setTimeout(() => setHitEffect(null), 600);
 
       // Spawn next ball after tiny delay
@@ -187,7 +232,7 @@ function AimTrainer() {
         if (gameActiveRef.current) spawnBall();
       }, 150);
     },
-    [spawnBall]
+    [spawnBall],
   );
 
   // ─── Handle miss ───
@@ -196,11 +241,83 @@ function AimTrainer() {
     setMisses((prev) => prev + 1);
   }, []);
 
-  // ─── Init scene ───
+  // ─── Release pointer lock on game over ───
   useEffect(() => {
-    startGame();
-    // eslint-disable-next-line
+    if (gameOver && document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+  }, [gameOver]);
+
+  // ─── P-key toggles settings menu ───
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "p" || e.key === "P") {
+        // Don't toggle if typing in an input
+        if (e.target.tagName === "INPUT") return;
+        setShowSettings((prev) => !prev);
+      }
+      // ESC closes settings
+      if (e.key === "Escape" && showSettings) {
+        setShowSettings(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showSettings]);
+
+  // ─── Apply sensitivity to look-controls via custom component ───
+  useEffect(() => {
+    const AFRAME = window.AFRAME;
+    if (!AFRAME) return;
+
+    // Register a custom component that overrides mouse sensitivity
+    if (!AFRAME.components["custom-look-sensitivity"]) {
+      AFRAME.registerComponent("custom-look-sensitivity", {
+        schema: { sensitivity: { type: "number", default: 1 } },
+        init() {
+          this.onMouseMove = this.onMouseMove.bind(this);
+          this.pitchObject = new AFRAME.THREE.Object3D();
+          this.yawObject = new AFRAME.THREE.Object3D();
+        },
+        // We don't use this component to actually move the camera;
+        // instead we patch the look-controls mousemove handler
+      });
+    }
+
+    // Patch the look-controls to apply our sensitivity multiplier
+    const scene = sceneRef.current;
+    if (!scene) return;
+
+    const applyPatch = () => {
+      const cam = scene.querySelector("a-camera");
+      if (!cam) return;
+      const lc = cam.components["look-controls"];
+      if (!lc) return;
+
+      // Only patch once
+      if (!lc._origOnMouseMove && lc.onMouseMove) {
+        lc._origOnMouseMove = lc.onMouseMove.bind(lc);
+        lc.onMouseMove = function (evt) {
+          // Scale the movementX/Y by our sensitivity
+          const sens = sensitivityRef.current;
+          const fakeEvent = {
+            movementX: (evt.movementX || 0) * sens,
+            movementY: (evt.movementY || 0) * sens,
+            screenX: evt.screenX,
+            screenY: evt.screenY,
+          };
+          lc._origOnMouseMove(fakeEvent);
+        };
+      }
+    };
+
+    // A-Frame may not have initialized look-controls yet, wait a bit
+    const timer = setTimeout(applyPatch, 500);
+    return () => clearTimeout(timer);
   }, []);
+
+  // ─── No auto-start — just mount the scene ───
+  // (Game waits for user to click "Click to Start")
 
   // ─── Click detection using Three.js raycaster on the canvas ───
   useEffect(() => {
@@ -211,30 +328,20 @@ function AimTrainer() {
 
       const canvas = scene.canvas;
 
-      const onClick = (e) => {
+      const onClick = () => {
         if (!gameActiveRef.current) return;
 
-        // Get Three.js internals from A-Frame
         const threeScene = scene.object3D;
         const camera = scene.camera;
         if (!threeScene || !camera) return;
 
-        // Get the THREE module from A-Frame
         const THREE = window.AFRAME.THREE || window.THREE;
         if (!THREE) return;
 
-        // Calculate normalized mouse coordinates
-        const rect = canvas.getBoundingClientRect();
-        const mouse = new THREE.Vector2(
-          ((e.clientX - rect.left) / rect.width) * 2 - 1,
-          -((e.clientY - rect.top) / rect.height) * 2 + 1
-        );
-
-        // Raycast
+        // Ray from camera center (where the crosshair/camera is pointing)
         const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(mouse, camera);
+        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
 
-        // Find all meshes in the scene
         const meshes = [];
         threeScene.traverse((child) => {
           if (child.isMesh) {
@@ -244,15 +351,16 @@ function AimTrainer() {
 
         const intersects = raycaster.intersectObjects(meshes, false);
 
-        // Check if we hit a ball (the entity with ball-target class)
         let hitBall = false;
         for (const hit of intersects) {
-          // Walk up to find the A-Frame entity
           let obj = hit.object;
           while (obj) {
-            if (obj.el && obj.el.classList && obj.el.classList.contains("ball-target")) {
+            if (
+              obj.el &&
+              obj.el.classList &&
+              obj.el.classList.contains("ball-target")
+            ) {
               hitBall = true;
-              // Get ball data from ref
               const currentBall = ballRef.current;
               if (currentBall) {
                 handleBallHit(currentBall.id, currentBall.points);
@@ -270,7 +378,6 @@ function AimTrainer() {
       };
 
       canvas.addEventListener("click", onClick);
-      // Store cleanup function
       canvas._aimCleanup = () => canvas.removeEventListener("click", onClick);
     }, 100);
 
@@ -284,8 +391,21 @@ function AimTrainer() {
   }, [handleBallHit, handleSceneMiss]);
 
   return (
-    <div className="aim-trainer">
+    <div className="aim-trainer" ref={containerRef}>
+      {/* ─── "Click to Start" overlay ─── */}
+      {waitingToStart && !gameOver && (
+        <div className="start-overlay" onClick={startGame}>
+          <div className="start-card">
+            <h2 className="start-title">AIM TRAINER</h2>
+            <p className="start-mode">Classic Mode — {duration}s</p>
+            <div className="start-cta">🎯 Click anywhere to start</div>
+            <p className="start-hint">Press <kbd>P</kbd> during game for settings</p>
+          </div>
+        </div>
+      )}
+
       {/* ─── HUD Overlay ─── */}
+      {!waitingToStart && (
       <div className="hud">
         <div className="hud-left">
           <div className="hud-item">
@@ -299,12 +419,13 @@ function AimTrainer() {
         </div>
 
         <div className="hud-center">
-          {/* Conditional rendering for countdown / timer */}
           {countdown > 0 && (
             <div className="countdown-display">{countdown}</div>
           )}
           {countdown <= 0 && !gameOver && (
-            <div className={`timer-display ${timeLeft <= 5 ? "timer-danger" : ""}`}>
+            <div
+              className={`timer-display ${timeLeft <= 5 ? "timer-danger" : ""}`}
+            >
               {timeLeft}
             </div>
           )}
@@ -316,11 +437,12 @@ function AimTrainer() {
             <span className="hud-value hit-val">{hits}</span>
           </div>
           <div className="hud-item">
-            <span className="hud-label">Mode</span>
-            <span className="hud-value mode-val">{mode}</span>
+            <span className="hud-label">Misses</span>
+            <span className="hud-value miss-val">{misses}</span>
           </div>
         </div>
       </div>
+      )}
 
       {/* ─── Hit effect ─── */}
       {hitEffect && (
@@ -332,8 +454,48 @@ function AimTrainer() {
         </div>
       )}
 
-      {/* ─── Crosshair ─── */}
-      {gameActive && <div className="crosshair" />}
+      {/* ─── Crosshair — fixed at center, camera follows mouse via pointer lock ─── */}
+      {gameActive && (
+        <div className="crosshair">
+          <div className="crosshair-dot" />
+        </div>
+      )}
+
+      {/* ─── Pointer lock prompt ─── */}
+      {gameActive && !pointerLocked && !showSettings && (
+        <div className="pointer-lock-prompt">
+          <p>🖱️ Click on the game to lock your mouse</p>
+          <p className="prompt-sub">Your mouse controls the camera view</p>
+        </div>
+      )}
+
+      {/* ─── Settings menu (P key) ─── */}
+      {showSettings && (
+        <div className="settings-overlay">
+          <div className="settings-card">
+            <h3 className="settings-title">⚙️ Settings</h3>
+            <div className="settings-row">
+              <label className="settings-label">
+                Mouse Sensitivity: <strong>{sensitivity.toFixed(2)}</strong>
+              </label>
+              <input
+                type="range"
+                min="0.1"
+                max="3"
+                step="0.05"
+                value={sensitivity}
+                onChange={(e) => setSensitivity(parseFloat(e.target.value))}
+                className="settings-slider"
+              />
+              <div className="slider-labels">
+                <span>Slow</span>
+                <span>Fast</span>
+              </div>
+            </div>
+            <p className="settings-hint">Press <kbd>P</kbd> or <kbd>ESC</kbd> to close</p>
+          </div>
+        </div>
+      )}
 
       {/* ─── 3D Scene ─── */}
       <div className="scene-container">
@@ -345,9 +507,24 @@ function AimTrainer() {
         >
           {/* Lighting */}
           <a-light type="ambient" color="#334" intensity="0.4" />
-          <a-light type="directional" color="#fff" intensity="0.8" position="2 8 3" />
-          <a-light type="point" color="#ff4444" intensity="0.3" position="0 3 -5" />
-          <a-light type="point" color="#4488ff" intensity="0.2" position="-4 2 -3" />
+          <a-light
+            type="directional"
+            color="#fff"
+            intensity="0.8"
+            position="2 8 3"
+          />
+          <a-light
+            type="point"
+            color="#ff4444"
+            intensity="0.3"
+            position="0 3 -5"
+          />
+          <a-light
+            type="point"
+            color="#4488ff"
+            intensity="0.2"
+            position="-4 2 -3"
+          />
 
           {/* Environment — dark shooting range */}
           <a-sky color="#0a0a12" />
@@ -360,12 +537,7 @@ function AimTrainer() {
           />
 
           {/* Back wall */}
-          <a-plane
-            position="0 3 -10"
-            width="30"
-            height="12"
-            color="#0d0d18"
-          />
+          <a-plane position="0 3 -10" width="30" height="12" color="#0d0d18" />
 
           {/* Grid lines on floor */}
           {Array.from({ length: 11 }).map((_, i) => (
@@ -380,10 +552,10 @@ function AimTrainer() {
             </a-entity>
           ))}
 
-          {/* Camera — no pointer lock so clicking works */}
+          {/* Camera — pointer lock: mouse moves the view, crosshair stays centered */}
           <a-camera
             position="0 1.8 0"
-            look-controls="enabled: false"
+            look-controls="enabled: true; pointerLockEnabled: true; reverseMouseDrag: false"
             wasd-controls="enabled: false"
           />
 
@@ -440,10 +612,6 @@ function AimTrainer() {
                 <span className="stat-value">{accuracy}%</span>
               </div>
               <div className="stat-item">
-                <span className="stat-label">Mode</span>
-                <span className="stat-value">{mode}</span>
-              </div>
-              <div className="stat-item">
                 <span className="stat-label">Duration</span>
                 <span className="stat-value">{duration}s</span>
               </div>
@@ -451,24 +619,39 @@ function AimTrainer() {
 
             {/* Conditional — accuracy feedback */}
             {accuracy >= 80 && (
-              <p className="feedback good">🎯 Excellent accuracy! Sharpshooter!</p>
+              <p className="feedback good">
+                🎯 Excellent accuracy! Sharpshooter!
+              </p>
             )}
             {accuracy >= 50 && accuracy < 80 && (
               <p className="feedback ok">👍 Good aim, keep practicing!</p>
             )}
             {accuracy < 50 && accuracy > 0 && (
-              <p className="feedback bad">😤 Keep training, you'll get better!</p>
+              <p className="feedback bad">
+                😤 Keep training, you'll get better!
+              </p>
             )}
             {accuracy === 0 && (
               <p className="feedback bad">🤔 Did you even try?</p>
             )}
 
-            {scoreSaved && (
-              <p className="score-saved-msg">✅ Score saved!</p>
-            )}
+            {scoreSaved && <p className="score-saved-msg">✅ Score saved!</p>}
 
             <div className="game-over-actions">
-              <button className="btn-primary" onClick={startGame}>
+              <button className="btn-primary" onClick={() => {
+                setGameOver(false);
+                setWaitingToStart(true);
+                setCountdown(0);
+                setScore(0);
+                setHits(0);
+                setMisses(0);
+                setTimeLeft(duration);
+                setBall(null);
+                setScoreSaved(false);
+                setPopEffect(null);
+                setHitEffect(null);
+                ballIdRef.current = 0;
+              }}>
                 🔄 Play Again
               </button>
               <button

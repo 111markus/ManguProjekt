@@ -1,4 +1,9 @@
-import React, { createContext, useReducer, useContext, useCallback } from "react";
+import React, {
+  createContext,
+  useReducer,
+  useContext,
+  useCallback,
+} from "react";
 
 // ─── Initial State ───
 const initialState = {
@@ -9,7 +14,7 @@ const initialState = {
   currentPage: "home", // home | game | leaderboard
   gameSettings: {
     mode: "classic", // classic | precision | speed
-    duration: 30,     // seconds
+    duration: 30, // seconds
     ballSpeed: "normal", // slow | normal | fast
   },
   sortField: "score",
@@ -34,7 +39,10 @@ function gameReducer(state, action) {
     case "CLEAR_ERROR":
       return { ...state, error: null };
     case "SET_GAME_SETTINGS":
-      return { ...state, gameSettings: { ...state.gameSettings, ...action.payload } };
+      return {
+        ...state,
+        gameSettings: { ...state.gameSettings, ...action.payload },
+      };
     case "SET_SORT":
       return {
         ...state,
@@ -87,7 +95,7 @@ export function GameProvider({ children }) {
         return null;
       }
     },
-    [state.playerName]
+    [state.playerName],
   );
 
   // Delete a score
@@ -114,7 +122,11 @@ export function GameProvider({ children }) {
       if (typeof a[state.sortField] === "number") {
         return (a[state.sortField] - b[state.sortField]) * dir;
       }
-      return String(a[state.sortField] || "").localeCompare(String(b[state.sortField] || "")) * dir;
+      return (
+        String(a[state.sortField] || "").localeCompare(
+          String(b[state.sortField] || ""),
+        ) * dir
+      );
     });
     return sorted;
   }, [state.scores, state.sortField, state.sortOrder]);

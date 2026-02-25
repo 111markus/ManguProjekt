@@ -43,13 +43,20 @@ app.get("/api/scores", (req, res) => {
   const sortField = sort || "score";
   const sortOrder = order === "asc" ? 1 : -1;
   sorted.sort((a, b) => {
-    if (sortField === "score" || sortField === "hits" || sortField === "accuracy") {
+    if (
+      sortField === "score" ||
+      sortField === "hits" ||
+      sortField === "accuracy"
+    ) {
       return ((b[sortField] || 0) - (a[sortField] || 0)) * sortOrder * -1;
     }
     if (sortField === "date") {
       return (new Date(b.date) - new Date(a.date)) * sortOrder * -1;
     }
-    return String(a[sortField] || "").localeCompare(String(b[sortField] || "")) * sortOrder;
+    return (
+      String(a[sortField] || "").localeCompare(String(b[sortField] || "")) *
+      sortOrder
+    );
   });
 
   // Limit
@@ -64,7 +71,7 @@ app.get("/api/scores", (req, res) => {
 app.get("/api/scores/:playerName", (req, res) => {
   const scores = readScores();
   const playerScores = scores.filter(
-    (s) => s.name.toLowerCase() === req.params.playerName.toLowerCase()
+    (s) => s.name.toLowerCase() === req.params.playerName.toLowerCase(),
   );
   res.json(playerScores);
 });

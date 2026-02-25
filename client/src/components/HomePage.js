@@ -20,27 +20,6 @@ function HomePage() {
     dispatch({ type: "SET_PAGE", payload: "game" });
   };
 
-  const modes = [
-    {
-      id: "classic",
-      title: "Classic",
-      desc: "Shoot as many balls as possible in 30 seconds",
-      icon: "🎯",
-    },
-    {
-      id: "precision",
-      title: "Precision",
-      desc: "Smaller targets, higher points. Accuracy matters!",
-      icon: "🔬",
-    },
-    {
-      id: "speed",
-      title: "Speed",
-      desc: "Balls move fast and disappear quickly",
-      icon: "⚡",
-    },
-  ];
-
   const durations = [15, 30, 45, 60];
 
   return (
@@ -70,31 +49,6 @@ function HomePage() {
             onKeyDown={(e) => e.key === "Enter" && handleStart()}
             maxLength={20}
           />
-        </div>
-
-        {/* Game Mode — array mapping */}
-        <div className="card mode-card">
-          <h2>🎮 Game Mode</h2>
-          <div className="mode-grid">
-            {modes.map((mode) => (
-              <button
-                key={mode.id}
-                className={`mode-btn ${
-                  state.gameSettings.mode === mode.id ? "active" : ""
-                }`}
-                onClick={() =>
-                  dispatch({
-                    type: "SET_GAME_SETTINGS",
-                    payload: { mode: mode.id },
-                  })
-                }
-              >
-                <span className="mode-icon">{mode.icon}</span>
-                <span className="mode-title">{mode.title}</span>
-                <span className="mode-desc">{mode.desc}</span>
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Duration */}
@@ -127,7 +81,9 @@ function HomePage() {
           </button>
           <button
             className="btn-secondary"
-            onClick={() => dispatch({ type: "SET_PAGE", payload: "leaderboard" })}
+            onClick={() =>
+              dispatch({ type: "SET_PAGE", payload: "leaderboard" })
+            }
           >
             🏆 Leaderboard
           </button>

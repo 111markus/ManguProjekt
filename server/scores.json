@@ -53,5 +53,27 @@
     "mode": "precision",
     "duration": 30,
     "date": "2026-02-18T13:18:22.059Z"
+  },
+  {
+    "id": "1772017617705",
+    "name": "Alibaba",
+    "score": 4620,
+    "hits": 51,
+    "misses": 3,
+    "accuracy": 94,
+    "mode": "classic",
+    "duration": 60,
+    "date": "2026-02-25T11:06:57.705Z"
+  },
+  {
+    "id": "1772018929783",
+    "name": "asd",
+    "score": 2052,
+    "hits": 24,
+    "misses": 3,
+    "accuracy": 89,
+    "mode": "classic",
+    "duration": 30,
+    "date": "2026-02-25T11:28:49.783Z"
   }
 ]
