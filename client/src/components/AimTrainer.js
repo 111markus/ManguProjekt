@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useGame } from "../context/GameContext";
+import Waves from "./Waves";
 
-// ─── Ball generation helpers ───
 function randomPosition() {
   const x = (Math.random() - 0.5) * 7;
   const y = Math.random() * 2.5 + 0.8;
-  const z = -(Math.random() * 4 + 4);
+  const z = Math.random() * 4 + 4; // +Z direction (facing altar, 180° rotated)
   return { x, y, z };
 }
 
@@ -33,12 +33,11 @@ function getPoints(radius) {
   return Math.round(100 * (0.35 / Math.max(radius, 0.1)));
 }
 
-// ─── Main Component ───
 function AimTrainer() {
   const { state, dispatch, saveScore } = useGame();
   const { duration } = state.gameSettings;
 
-  // Game state — only 1 ball at a time
+
   const [ball, setBall] = useState(null);
   const [score, setScore] = useState(0);
   const [hits, setHits] = useState(0);
@@ -46,17 +45,20 @@ function AimTrainer() {
   const [timeLeft, setTimeLeft] = useState(duration);
   const [gameActive, setGameActive] = useState(false);
   const [gameOver, setGameOver] = useState(false);
-  const [countdown, setCountdown] = useState(0); // 0 = not counting
-  const [waitingToStart, setWaitingToStart] = useState(true); // NEW: wait for click
+  const [countdown, setCountdown] = useState(0); 
+  const [waitingToStart, setWaitingToStart] = useState(true); 
   const [scoreSaved, setScoreSaved] = useState(false);
   const [hitEffect, setHitEffect] = useState(null);
   const [popEffect, setPopEffect] = useState(null);
   const [crosshairPos, setCrosshairPos] = useState({ x: 0, y: 0 });
   const [pointerLocked, setPointerLocked] = useState(false);
-  const [showSettings, setShowSettings] = useState(false); // NEW: P-key menu
-  const [sensitivity, setSensitivity] = useState(1); // NEW: mouse sensitivity
+  const [showSettings, setShowSettings] = useState(false); 
+  const [sensitivity, setSensitivity] = useState(1); 
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundVolume, setSoundVolume] = useState(0.5);
+  const [reloading, setReloading] = useState(false);
 
-  // Refs
+  
   const sceneRef = useRef(null);
   const timerRef = useRef(null);
   const ballIdRef = useRef(0);
@@ -65,8 +67,92 @@ function AimTrainer() {
   const ballRef = useRef(null);
   const containerRef = useRef(null);
   const sensitivityRef = useRef(1);
+  const gunRef = useRef(null); 
+  const soundEnabledRef = useRef(true);
+  const soundVolumeRef = useRef(0.5);
 
-  // Keep refs in sync
+  
+  useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
+  useEffect(() => { soundVolumeRef.current = soundVolume; }, [soundVolume]);
+
+ 
+  useEffect(() => {
+    let unlocked = false;
+    const unlock = () => {
+      if (unlocked) return;
+      unlocked = true;
+     
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const buf = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+        console.log("[Audio] ✅ AudioContext unlocked via user gesture");
+      } catch (e) {
+        console.warn("[Audio] Could not unlock AudioContext:", e);
+      }
+      
+      try {
+        const a = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
+        a.volume = 0;
+        a.play().catch(() => {});
+      } catch (e) {}
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("mousedown", unlock);
+    };
+    window.addEventListener("click", unlock);
+    window.addEventListener("keydown", unlock);
+    window.addEventListener("mousedown", unlock);
+    return () => {
+      window.removeEventListener("click", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("mousedown", unlock);
+    };
+  }, []);
+
+  
+  const playSound = useCallback((src, volumeMultiplier = 1.0) => {
+    console.log("[Audio] playSound called, enabled:", soundEnabledRef.current, "src:", src);
+    if (!soundEnabledRef.current) {
+      console.log("[Audio] Sound disabled, skipping");
+      return;
+    }
+    try {
+      const a = new Audio(src);
+      a.volume = soundVolumeRef.current * volumeMultiplier;
+      const promise = a.play();
+      if (promise && promise.then) {
+        promise.then(() => {
+          console.log("[Audio] ✅ Playing:", src);
+        }).catch((err) => {
+          console.error("[Audio] ❌ Play failed:", err.message, err.name);
+        });
+      }
+    } catch (e) {
+      console.error("[Audio] ❌ Error creating Audio:", e);
+    }
+  }, []);
+
+  
+  const playFire = useCallback(() => playSound("/models/fire.mp3"), [playSound]);
+  const playReload = useCallback(() => playSound("/models/reload.mp3"), [playSound]);
+
+  
+  useEffect(() => {
+    const preload = (src) => {
+      const a = new Audio(src);
+      a.preload = "auto";
+      a.load();
+      console.log("[Audio] Preloading:", src);
+    };
+    preload("/models/fire.mp3");
+    preload("/models/reload.mp3");
+  }, []);
+
+  
   useEffect(() => {
     gameActiveRef.current = gameActive;
   }, [gameActive]);
@@ -80,7 +166,7 @@ function AimTrainer() {
   const accuracy =
     hits + misses > 0 ? Math.round((hits / (hits + misses)) * 100) : 0;
 
-  // ─── Track mouse for crosshair ───
+  
   useEffect(() => {
     const onMouseMove = (e) => {
       setCrosshairPos({ x: e.clientX, y: e.clientY });
@@ -89,7 +175,7 @@ function AimTrainer() {
     return () => window.removeEventListener("mousemove", onMouseMove);
   }, []);
 
-  // ─── Track pointer lock state ───
+  
   useEffect(() => {
     const onLockChange = () => {
       setPointerLocked(!!document.pointerLockElement);
@@ -98,7 +184,118 @@ function AimTrainer() {
     return () => document.removeEventListener("pointerlockchange", onLockChange);
   }, []);
 
-  // ─── Spawn a single ball ───
+  
+  useEffect(() => {
+    let disposed = false;
+    let retryTimer = null;
+
+    const makeTransparent = () => {
+      if (disposed) return;
+      const scene = sceneRef.current;
+      if (!scene || !scene.renderer) {
+        retryTimer = setTimeout(makeTransparent, 300);
+        return;
+      }
+      
+      scene.renderer.setClearColor(0x000000, 0);
+      
+      if (scene.object3D) {
+        scene.object3D.background = null;
+      }
+      
+      const canvas = scene.canvas;
+      if (canvas) {
+        canvas.style.background = "transparent";
+      }
+    };
+
+    retryTimer = setTimeout(makeTransparent, 300);
+    return () => {
+      disposed = true;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, []);
+
+  
+  useEffect(() => {
+    let gunEntity = null;
+    let disposed = false;
+    let retryTimer = null;
+
+    const setupGun = () => {
+      if (disposed) return;
+      const scene = sceneRef.current;
+      if (!scene) {
+        console.warn("[FPS Rig] Scene not ready, retrying in 500ms...");
+        retryTimer = setTimeout(setupGun, 500);
+        return;
+      }
+
+      
+      const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
+      if (!cam) {
+        console.warn("[FPS Rig] Camera not found, retrying in 500ms...");
+        retryTimer = setTimeout(setupGun, 500);
+        return;
+      }
+
+     
+      if (cam.querySelector("#fps-weapon-rig")) {
+        console.log("[FPS Rig] Already exists, skipping.");
+        gunRef.current = cam.querySelector("#fps-weapon-rig");
+        return;
+      }
+
+      console.log("[FPS Rig] Camera found:", cam.tagName, "- creating weapon entity...");
+
+      
+      gunEntity = document.createElement("a-entity");
+      gunEntity.setAttribute("id", "fps-weapon-rig");
+      gunEntity.setAttribute("gltf-model", "url(/models/fps-rig-akm.glb)");
+      gunEntity.setAttribute("position", "0.4 -0.4 -0.6");
+      gunEntity.setAttribute("rotation", "360 75 0");
+      gunEntity.setAttribute("scale", "0.1 0.1 0.1");
+
+      gunEntity.addEventListener("model-loaded", () => {
+        console.log("[FPS Rig] ✅ Model loaded successfully!");
+       
+        const mesh = gunEntity.getObject3D("mesh");
+        if (mesh && mesh.animations) {
+          console.log("[FPS Rig] Available animations:", mesh.animations.map(a => a.name));
+        }
+        gunEntity.setAttribute("animation-mixer", {
+          clip: "Armature|Idle",
+          loop: "repeat",
+          crossFadeDuration: 0.2,
+        });
+      });
+
+      gunEntity.addEventListener("model-error", (e) => {
+        console.error("[FPS Rig] ❌ Model failed to load:", e.detail);
+      });
+
+      
+      cam.appendChild(gunEntity);
+
+      
+      gunRef.current = gunEntity;
+      console.log("[FPS Rig] Entity appended to camera");
+    };
+
+    
+    retryTimer = setTimeout(setupGun, 500);
+
+    return () => {
+      disposed = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      if (gunEntity && gunEntity.parentNode) {
+        gunEntity.parentNode.removeChild(gunEntity);
+      }
+      gunRef.current = null;
+    };
+  }, []);
+
+  
   const spawnBall = useCallback(() => {
     if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
 
@@ -110,7 +307,7 @@ function AimTrainer() {
 
     setBall({ id, ...pos, radius, color, points });
 
-    // Auto-expire after 3 seconds: miss + spawn next
+    
     ballTimeoutRef.current = setTimeout(() => {
       if (gameActiveRef.current) {
         setMisses((prev) => prev + 1);
@@ -119,7 +316,7 @@ function AimTrainer() {
     }, 3000);
   }, []);
 
-  // ─── Start game (called when user clicks "Click to Start") ───
+  
   const startGame = useCallback(() => {
     setScore(0);
     setHits(0);
@@ -137,7 +334,7 @@ function AimTrainer() {
     ballIdRef.current = 0;
     if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
 
-    // Countdown 3..2..1
+    
     let c = 3;
     const countdownInterval = setInterval(() => {
       c--;
@@ -150,7 +347,7 @@ function AimTrainer() {
     }, 1000);
   }, [duration]);
 
-  // ─── Timer ───
+  
   useEffect(() => {
     if (!gameActive) return;
 
@@ -171,7 +368,7 @@ function AimTrainer() {
     return () => clearInterval(timerRef.current);
   }, [gameActive]);
 
-  // ─── Spawn first ball when game starts ───
+  
   useEffect(() => {
     if (gameActive) {
       spawnBall();
@@ -181,7 +378,7 @@ function AimTrainer() {
     };
   }, [gameActive, spawnBall]);
 
-  // ─── Auto-save score on game over ───
+  
   useEffect(() => {
     if (gameOver && !scoreSaved && score > 0) {
       saveScore({ score, hits, misses, accuracy, mode: "classic", duration });
@@ -198,11 +395,83 @@ function AimTrainer() {
     saveScore,
   ]);
 
+  // ─── Muzzle flash helper ───
+  const showMuzzleFlash = useCallback(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
+    if (!cam) return;
+
+    // Create flash light (bright point light)
+    const flash = document.createElement("a-entity");
+    flash.setAttribute("position", "0.25 -0.15 -1.2");
+    flash.setAttribute("light", "type: point; color: #ffaa33; intensity: 3; distance: 5; decay: 2");
+
+    // Create visible flash sprite (small bright sphere)
+    const sprite = document.createElement("a-sphere");
+    sprite.setAttribute("position", "0.25 -0.15 -1.2");
+    sprite.setAttribute("radius", "0.04");
+    sprite.setAttribute("material", "color: #ffdd44; emissive: #ffaa00; emissiveIntensity: 3; transparent: true; opacity: 0.9");
+    sprite.setAttribute("scale", "1 1 0.3");
+
+    cam.appendChild(flash);
+    cam.appendChild(sprite);
+
+    // Remove after brief flash (60ms)
+    setTimeout(() => {
+      if (flash.parentNode) flash.parentNode.removeChild(flash);
+      if (sprite.parentNode) sprite.parentNode.removeChild(sprite);
+    }, 60);
+  }, []);
+
+  // ─── Play shoot animation on the FPS rig ───
+  const playShootAnimation = useCallback(() => {
+    const gun = gunRef.current;
+    if (!gun) return;
+
+    // Don't interrupt reload animation
+    if (reloadingRef.current) return;
+
+    // Play fire sound
+    playFire();
+
+    // Show muzzle flash
+    showMuzzleFlash();
+
+    // Force-restart: remove then re-add animation-mixer with a new timeStamp
+    gun.removeAttribute("animation-mixer");
+    setTimeout(() => {
+      if (!gunRef.current || reloadingRef.current) return;
+      gunRef.current.setAttribute("animation-mixer", {
+        clip: "Armature|Shoot",
+        loop: "once",
+        clampWhenFinished: true,
+        crossFadeDuration: 0.05,
+      });
+      // Return to idle after short delay
+      setTimeout(() => {
+        if (!gunRef.current || reloadingRef.current) return;
+        gunRef.current.removeAttribute("animation-mixer");
+        setTimeout(() => {
+          if (!gunRef.current || reloadingRef.current) return;
+          gunRef.current.setAttribute("animation-mixer", {
+            clip: "Armature|Idle",
+            loop: "repeat",
+            crossFadeDuration: 0.15,
+          });
+        }, 20);
+      }, 250);
+    }, 20);
+  }, [showMuzzleFlash, playFire]);
+
   // ─── Handle ball hit ───
   const handleBallHit = useCallback(
     (ballId, points) => {
       if (!gameActiveRef.current) return;
       if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
+
+      // Play shoot animation
+      playShootAnimation();
 
       // Pop effect at ball position
       setBall((currentBall) => {
@@ -232,14 +501,15 @@ function AimTrainer() {
         if (gameActiveRef.current) spawnBall();
       }, 150);
     },
-    [spawnBall],
+    [spawnBall, playShootAnimation],
   );
 
   // ─── Handle miss ───
   const handleSceneMiss = useCallback(() => {
     if (!gameActiveRef.current) return;
+    playShootAnimation();
     setMisses((prev) => prev + 1);
-  }, []);
+  }, [playShootAnimation]);
 
   // ─── Release pointer lock on game over ───
   useEffect(() => {
@@ -247,6 +517,53 @@ function AimTrainer() {
       document.exitPointerLock();
     }
   }, [gameOver]);
+
+  // ─── R-key triggers reload animation ───
+  const reloadingRef = useRef(false);
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.key === "r" || e.key === "R") && e.target.tagName !== "INPUT") {
+        if (!gameActiveRef.current) return;
+        if (reloadingRef.current) return;
+        const gun = gunRef.current;
+        if (!gun) return;
+
+        reloadingRef.current = true;
+
+        // Play reload sound
+        playReload();
+
+        // Same pattern as working shoot animation: remove → wait → set
+        gun.removeAttribute("animation-mixer");
+        setTimeout(() => {
+          if (!gunRef.current) return;
+          gunRef.current.setAttribute("animation-mixer", {
+            clip: "Armature|Reload",
+            loop: "once",
+            clampWhenFinished: true,
+            crossFadeDuration: 0.05,
+          });
+        }, 20);
+
+        // Return to idle after reload animation finishes (3s animation duration)
+        setTimeout(() => {
+          if (!gunRef.current) return;
+          gunRef.current.removeAttribute("animation-mixer");
+          setTimeout(() => {
+            if (!gunRef.current) return;
+            gunRef.current.setAttribute("animation-mixer", {
+              clip: "Armature|Idle",
+              loop: "repeat",
+              crossFadeDuration: 0.15,
+            });
+            reloadingRef.current = false;
+          }, 20);
+        }, 3000);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [playReload]);
 
   // ─── P-key toggles settings menu ───
   useEffect(() => {
@@ -343,9 +660,31 @@ function AimTrainer() {
         raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
 
         const meshes = [];
+        // Get the gun model's Object3D so we can exclude it from raycasting
+        const gunObject3D = gunRef.current ? gunRef.current.object3D : null;
+        // Get the set-design scenery Object3D to exclude from raycasting
+        const sceneryEl = scene.querySelector('.set-design-scenery');
+        const sceneryObject3D = sceneryEl ? sceneryEl.object3D : null;
         threeScene.traverse((child) => {
           if (child.isMesh) {
-            meshes.push(child);
+            // Skip meshes that belong to the FPS weapon rig
+            let isExcluded = false;
+            if (gunObject3D) {
+              let parent = child;
+              while (parent) {
+                if (parent === gunObject3D) { isExcluded = true; break; }
+                parent = parent.parent;
+              }
+            }
+            // Skip meshes that belong to the set-design scenery
+            if (!isExcluded && sceneryObject3D) {
+              let parent = child;
+              while (parent) {
+                if (parent === sceneryObject3D) { isExcluded = true; break; }
+                parent = parent.parent;
+              }
+            }
+            if (!isExcluded) meshes.push(child);
           }
         });
 
@@ -444,7 +783,7 @@ function AimTrainer() {
       </div>
       )}
 
-      {/* ─── Hit effect ─── */}
+  
       {hitEffect && (
         <div
           className="hit-effect"
@@ -454,14 +793,12 @@ function AimTrainer() {
         </div>
       )}
 
-      {/* ─── Crosshair — fixed at center, camera follows mouse via pointer lock ─── */}
       {gameActive && (
         <div className="crosshair">
           <div className="crosshair-dot" />
         </div>
       )}
 
-      {/* ─── Pointer lock prompt ─── */}
       {gameActive && !pointerLocked && !showSettings && (
         <div className="pointer-lock-prompt">
           <p>🖱️ Click on the game to lock your mouse</p>
@@ -469,7 +806,6 @@ function AimTrainer() {
         </div>
       )}
 
-      {/* ─── Settings menu (P key) ─── */}
       {showSettings && (
         <div className="settings-overlay">
           <div className="settings-card">
@@ -492,72 +828,108 @@ function AimTrainer() {
                 <span>Fast</span>
               </div>
             </div>
+
+            <div className="settings-row">
+              <label className="settings-label">
+                Sound: <strong>{soundEnabled ? "ON 🔊" : "OFF 🔇"}</strong>
+              </label>
+              <button
+                className={`btn-secondary sound-toggle ${soundEnabled ? "sound-on" : "sound-off"}`}
+                onClick={() => {
+                  const next = !soundEnabled;
+                  setSoundEnabled(next);
+                  
+                  if (next) {
+                    setTimeout(() => {
+                      const a = new Audio("/models/fire.mp3");
+                      a.volume = 0.3;
+                      a.play();
+                    }, 100);
+                  }
+                }}
+                style={{ marginTop: 8 }}
+              >
+                {soundEnabled ? "🔊 Mute" : "🔇 Unmute"}
+              </button>
+            </div>
+
+            {soundEnabled && (
+              <div className="settings-row">
+                <label className="settings-label">
+                  Volume: <strong>{Math.round(soundVolume * 100)}%</strong>
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={soundVolume}
+                  onChange={(e) => setSoundVolume(parseFloat(e.target.value))}
+                  className="settings-slider"
+                />
+                <div className="slider-labels">
+                  <span>🔈</span>
+                  <span>🔊</span>
+                </div>
+              </div>
+            )}
+
             <p className="settings-hint">Press <kbd>P</kbd> or <kbd>ESC</kbd> to close</p>
           </div>
         </div>
       )}
 
-      {/* ─── 3D Scene ─── */}
       <div className="scene-container">
+        <div className="waves-sky-bg">
+          <Waves
+            lineColor="#5227FF"
+            backgroundColor="#0a0a1a"
+            waveSpeedX={0.02}
+            waveSpeedY={0.01}
+            waveAmpX={40}
+            waveAmpY={20}
+            friction={0.9}
+            tension={0.01}
+            maxCursorMove={120}
+            xGap={12}
+            yGap={36}
+          />
+        </div>
+
         <a-scene
           ref={sceneRef}
           embedded
           vr-mode-ui="enabled: false"
+          renderer="alpha: true; antialias: true; colorManagement: true"
           style={{ width: "100%", height: "100%" }}
         >
-          {/* Lighting */}
-          <a-light type="ambient" color="#334" intensity="0.4" />
+
+          <a-light type="ambient" color="#ffffff" intensity="0.6" />
           <a-light
             type="directional"
-            color="#fff"
-            intensity="0.8"
-            position="2 8 3"
+            color="#fff4d6"
+            intensity="1.0"
+            position="-4 8 -2"
+            castShadow="true"
           />
-          <a-light
-            type="point"
-            color="#ff4444"
-            intensity="0.3"
-            position="0 3 -5"
-          />
-          <a-light
-            type="point"
-            color="#4488ff"
-            intensity="0.2"
-            position="-4 2 -3"
+          <a-light type="hemisphere" color="#ffe0a0" groundColor="#aa8855" intensity="0.3" />
+
+          <a-entity
+            gltf-model="/models/set-design.glb"
+            position="-30 -2 50"
+            scale="1 1 1"
+            class="set-design-scenery"
           />
 
-          {/* Environment — dark shooting range */}
-          <a-sky color="#0a0a12" />
-          <a-plane
-            rotation="-90 0 0"
-            width="30"
-            height="30"
-            color="#111118"
-            position="0 0 -5"
-          />
 
-          {/* Back wall */}
-          <a-plane position="0 3 -10" width="30" height="12" color="#0d0d18" />
-
-          {/* Grid lines on floor */}
-          {Array.from({ length: 11 }).map((_, i) => (
-            <a-entity key={`grid-${i}`}>
-              <a-box
-                position={`${(i - 5) * 3} 0.01 -5`}
-                width="0.02"
-                height="0.02"
-                depth="30"
-                color="#1a1a2e"
-              />
-            </a-entity>
-          ))}
-
-          {/* Camera — pointer lock: mouse moves the view, crosshair stays centered */}
-          <a-camera
-            position="0 1.8 0"
-            look-controls="enabled: true; pointerLockEnabled: true; reverseMouseDrag: false"
-            wasd-controls="enabled: false"
-          />
+          <a-entity position="0 0 0" rotation="0 180 0">
+            <a-camera
+              position="0 1.8 0"
+              look-controls="enabled: true; pointerLockEnabled: true; reverseMouseDrag: false"
+              wasd-controls="enabled: false"
+              near="0.01"
+            />
+          </a-entity>
 
           {/* ─── Single ball ─── */}
           {ball && (
