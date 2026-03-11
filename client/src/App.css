@@ -365,21 +365,18 @@
   }
 }
 
-/* Crosshair — red dot, always centered */
+/* Crosshair — custom image, always centered */
 .crosshair {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 6px;
-  height: 6px;
+  width: 96px;
+  height: 96px;
   z-index: 9999;
   pointer-events: none;
-  background: #ff2222;
-  border-radius: 50%;
-  box-shadow:
-    0 0 4px 1px rgba(255, 34, 34, 0.8),
-    0 0 0 1px rgba(0, 0, 0, 0.5);
+  user-select: none;
+  -webkit-user-drag: none;
 }
 .crosshair::before,
 .crosshair::after {
@@ -540,6 +537,7 @@
   justify-content: center;
   z-index: 700;
   animation: fadeIn 0.2s ease;
+  cursor: auto !important;
 }
 .settings-card {
   background: rgba(15, 15, 25, 0.95);
@@ -549,6 +547,7 @@
   min-width: 340px;
   text-align: center;
   animation: slideUp 0.3s ease;
+  cursor: auto;
 }
 .settings-title {
   font-family: "Orbitron", sans-serif;
@@ -646,6 +645,7 @@
   justify-content: center;
   z-index: 500;
   animation: fadeIn 0.4s ease;
+  cursor: auto !important;
 }
 
 @keyframes fadeIn {

@@ -70,10 +70,14 @@ function AimTrainer() {
   const gunRef = useRef(null); 
   const soundEnabledRef = useRef(true);
   const soundVolumeRef = useRef(0.5);
+  const showSettingsRef = useRef(false);
+  const gameOverRef = useRef(false);
 
   
   useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
+  useEffect(() => { showSettingsRef.current = showSettings; }, [showSettings]);
   useEffect(() => { soundVolumeRef.current = soundVolume; }, [soundVolume]);
+  useEffect(() => { gameOverRef.current = gameOver; }, [gameOver]);
 
  
   useEffect(() => {
@@ -182,6 +186,25 @@ function AimTrainer() {
     };
     document.addEventListener("pointerlockchange", onLockChange);
     return () => document.removeEventListener("pointerlockchange", onLockChange);
+  }, []);
+
+  // ─── Block pointer lock requests while settings are open ───
+  useEffect(() => {
+    const tryPatch = setInterval(() => {
+      const scene = sceneRef.current;
+      if (!scene || !scene.canvas) return;
+      const canvas = scene.canvas;
+      if (canvas._pointerLockPatched) { clearInterval(tryPatch); return; }
+
+      canvas._origRequestPointerLock = canvas.requestPointerLock.bind(canvas);
+      canvas.requestPointerLock = function () {
+        if (showSettingsRef.current || gameOverRef.current) return; // block while settings open or game over
+        canvas._origRequestPointerLock();
+      };
+      canvas._pointerLockPatched = true;
+      clearInterval(tryPatch);
+    }, 200);
+    return () => clearInterval(tryPatch);
   }, []);
 
   
@@ -333,6 +356,15 @@ function AimTrainer() {
     setShowSettings(false);
     ballIdRef.current = 0;
     if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
+
+    // Re-enable look-controls for the new game
+    const scene = sceneRef.current;
+    if (scene) {
+      const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
+      if (cam) {
+        cam.setAttribute("look-controls", "enabled", true);
+      }
+    }
 
     
     let c = 3;
@@ -511,10 +543,20 @@ function AimTrainer() {
     setMisses((prev) => prev + 1);
   }, [playShootAnimation]);
 
-  // ─── Release pointer lock on game over ───
+  // ─── Release pointer lock & disable look-controls on game over ───
   useEffect(() => {
-    if (gameOver && document.pointerLockElement) {
-      document.exitPointerLock();
+    if (gameOver) {
+      if (document.pointerLockElement) {
+        document.exitPointerLock();
+      }
+      // Disable look-controls so A-Frame doesn't re-lock the pointer
+      const scene = sceneRef.current;
+      if (scene) {
+        const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
+        if (cam) {
+          cam.setAttribute("look-controls", "enabled", false);
+        }
+      }
     }
   }, [gameOver]);
 
@@ -565,43 +607,74 @@ function AimTrainer() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [playReload]);
 
-  // ─── P-key toggles settings menu ───
+  // ─── Pause / unpause helpers ───
+  const pausedTimeRef = useRef(null); // stores timeLeft when paused
+
+  const pauseGame = useCallback(() => {
+    if (!gameActiveRef.current) return;
+    // Save remaining time and stop the timer
+    setTimeLeft((prev) => {
+      pausedTimeRef.current = prev;
+      return prev;
+    });
+    clearInterval(timerRef.current);
+    // Stop ball timeout so balls don't expire while paused
+    if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
+    setGameActive(false);
+    setShowSettings(true);
+    // Exit pointer lock so user can interact with settings UI
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+    // Disable look-controls so A-Frame doesn't re-lock the pointer
+    const scene = sceneRef.current;
+    if (scene) {
+      const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
+      if (cam) {
+        cam.setAttribute("look-controls", "enabled", false);
+      }
+    }
+  }, []);
+
+  const resumeGame = useCallback(() => {
+    setShowSettings(false);
+    // Re-enable look-controls
+    const scene = sceneRef.current;
+    if (scene) {
+      const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
+      if (cam) {
+        cam.setAttribute("look-controls", "enabled", true);
+      }
+    }
+    // Re-activate the game — the timer useEffect will restart automatically
+    setGameActive(true);
+  }, []);
+
+  // ─── P-key toggles settings menu (with pause/resume) ───
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key === "p" || e.key === "P") {
         // Don't toggle if typing in an input
         if (e.target.tagName === "INPUT") return;
-        setShowSettings((prev) => !prev);
+        if (showSettings) {
+          // Resume
+          resumeGame();
+        } else if (gameActiveRef.current) {
+          // Pause only if game is running
+          pauseGame();
+        }
       }
-      // ESC closes settings
+      // ESC closes settings (resumes)
       if (e.key === "Escape" && showSettings) {
-        setShowSettings(false);
+        resumeGame();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [showSettings]);
+  }, [showSettings, pauseGame, resumeGame]);
 
-  // ─── Apply sensitivity to look-controls via custom component ───
+  // ─── Apply sensitivity to look-controls — uniform for all mouse states ───
   useEffect(() => {
-    const AFRAME = window.AFRAME;
-    if (!AFRAME) return;
-
-    // Register a custom component that overrides mouse sensitivity
-    if (!AFRAME.components["custom-look-sensitivity"]) {
-      AFRAME.registerComponent("custom-look-sensitivity", {
-        schema: { sensitivity: { type: "number", default: 1 } },
-        init() {
-          this.onMouseMove = this.onMouseMove.bind(this);
-          this.pitchObject = new AFRAME.THREE.Object3D();
-          this.yawObject = new AFRAME.THREE.Object3D();
-        },
-        // We don't use this component to actually move the camera;
-        // instead we patch the look-controls mousemove handler
-      });
-    }
-
-    // Patch the look-controls to apply our sensitivity multiplier
     const scene = sceneRef.current;
     if (!scene) return;
 
@@ -612,25 +685,57 @@ function AimTrainer() {
       if (!lc) return;
 
       // Only patch once
-      if (!lc._origOnMouseMove && lc.onMouseMove) {
-        lc._origOnMouseMove = lc.onMouseMove.bind(lc);
-        lc.onMouseMove = function (evt) {
-          // Scale the movementX/Y by our sensitivity
-          const sens = sensitivityRef.current;
-          const fakeEvent = {
-            movementX: (evt.movementX || 0) * sens,
-            movementY: (evt.movementY || 0) * sens,
-            screenX: evt.screenX,
-            screenY: evt.screenY,
-          };
-          lc._origOnMouseMove(fakeEvent);
-        };
+      if (lc._sensitivityPatched) return;
+      lc._sensitivityPatched = true;
+
+      // Remove A-Frame's original mousemove listener so it doesn't double-apply
+      const canvasEl = scene.canvas;
+      if (canvasEl && lc.onMouseMove) {
+        canvasEl.removeEventListener("mousemove", lc.onMouseMove);
+        document.removeEventListener("mousemove", lc.onMouseMove);
       }
+
+      // Our custom handler — always uses the same sensitivity multiplier
+      const customMouseMove = function (evt) {
+        if (!lc.data.enabled) return;
+        // Block camera movement while settings are open or game is over
+        if (showSettingsRef.current || gameOverRef.current) return;
+
+        const sens = sensitivityRef.current;
+        const deltaX = (evt.movementX || 0) * sens;
+        const deltaY = (evt.movementY || 0) * sens;
+
+        // Apply rotation
+        lc.pitchObject.rotation.x -= deltaY * 0.002;
+        lc.yawObject.rotation.y -= deltaX * 0.002;
+
+        // Clamp pitch to avoid flipping
+        const PI_2 = Math.PI / 2;
+        lc.pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, lc.pitchObject.rotation.x));
+      };
+
+      // Replace the method on the component (so A-Frame's tick/update calls ours)
+      lc.onMouseMove = customMouseMove;
+
+      // Add our listener to the document (pointer-locked mousemove fires on document)
+      document.addEventListener("mousemove", customMouseMove);
+
+      // Store for cleanup
+      lc._customMouseMove = customMouseMove;
     };
 
     // A-Frame may not have initialized look-controls yet, wait a bit
     const timer = setTimeout(applyPatch, 500);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      const cam = scene.querySelector && scene.querySelector("a-camera");
+      if (cam) {
+        const lc = cam.components && cam.components["look-controls"];
+        if (lc && lc._customMouseMove) {
+          document.removeEventListener("mousemove", lc._customMouseMove);
+        }
+      }
+    };
   }, []);
 
   // ─── No auto-start — just mount the scene ───
@@ -645,8 +750,12 @@ function AimTrainer() {
 
       const canvas = scene.canvas;
 
-      const onClick = () => {
+      const onShoot = (e) => {
+        // Only fire on left mouse button
+        if (e.button !== 0) return;
         if (!gameActiveRef.current) return;
+        // Don't shoot while settings are open
+        if (showSettingsRef.current) return;
 
         const threeScene = scene.object3D;
         const camera = scene.camera;
@@ -716,8 +825,8 @@ function AimTrainer() {
         }
       };
 
-      canvas.addEventListener("click", onClick);
-      canvas._aimCleanup = () => canvas.removeEventListener("click", onClick);
+      canvas.addEventListener("mousedown", onShoot);
+      canvas._aimCleanup = () => canvas.removeEventListener("mousedown", onShoot);
     }, 100);
 
     return () => {
@@ -761,11 +870,16 @@ function AimTrainer() {
           {countdown > 0 && (
             <div className="countdown-display">{countdown}</div>
           )}
-          {countdown <= 0 && !gameOver && (
+          {countdown <= 0 && !gameOver && !showSettings && (
             <div
               className={`timer-display ${timeLeft <= 5 ? "timer-danger" : ""}`}
             >
               {timeLeft}
+            </div>
+          )}
+          {showSettings && (
+            <div className="timer-display" style={{ color: "#ffaa00" }}>
+              ⏸ {timeLeft}
             </div>
           )}
         </div>
@@ -793,10 +907,13 @@ function AimTrainer() {
         </div>
       )}
 
-      {gameActive && (
-        <div className="crosshair">
-          <div className="crosshair-dot" />
-        </div>
+      {gameActive && !showSettings && (
+        <img
+          src={require("../images/crosshair.png")}
+          alt="crosshair"
+          className="crosshair"
+          draggable={false}
+        />
       )}
 
       {gameActive && !pointerLocked && !showSettings && (
@@ -874,7 +991,10 @@ function AimTrainer() {
               </div>
             )}
 
-            <p className="settings-hint">Press <kbd>P</kbd> or <kbd>ESC</kbd> to close</p>
+            <p className="settings-hint">Press <kbd>P</kbd> or <kbd>ESC</kbd> to resume</p>
+            <button className="btn-primary" onClick={resumeGame} style={{ marginTop: 12 }}>
+              ▶ Resume
+            </button>
           </div>
         </div>
       )}
