@@ -10,6 +10,13 @@ const DATA_FILE = path.join(__dirname, "scores.json");
 app.use(cors());
 app.use(express.json());
 
+// Disable fullscreen API with CSP header
+app.use((req, res, next) => {
+  // CSP directive to disable fullscreen requests
+  res.setHeader("Permissions-Policy", "fullscreen=()");
+  next();
+});
+
 // Helper — read scores from file (acts like localStorage on the server)
 function readScores() {
   try {

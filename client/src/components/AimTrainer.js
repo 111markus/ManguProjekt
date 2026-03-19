@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useGame } from "../context/GameContext";
 import Waves from "./Waves";
+import crosshairImg from "../images/crosshair.png";
 
 function randomPosition() {
   const x = (Math.random() - 0.5) * 7;
@@ -673,6 +674,45 @@ function AimTrainer() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [showSettings, pauseGame, resumeGame]);
 
+  // ─── Exit fullscreen immediately if user enters it (F11) ───
+  useEffect(() => {
+    const checkFullscreen = () => {
+      // If in fullscreen, exit immediately
+      if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+          document.mozCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+      }
+    };
+    
+    // Check every 100ms if fullscreen was activated
+    const interval = setInterval(checkFullscreen, 100);
+    
+    // Also listen to fullscreen change events
+    const onFullscreenChange = () => {
+      setTimeout(checkFullscreen, 50);
+    };
+    
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    document.addEventListener("mozfullscreenchange", onFullscreenChange);
+    document.addEventListener("msfullscreenchange", onFullscreenChange);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", onFullscreenChange);
+      document.removeEventListener("msfullscreenchange", onFullscreenChange);
+    };
+  }, []);
+
   // ─── Apply sensitivity to look-controls — uniform for all mouse states ───
   useEffect(() => {
     const scene = sceneRef.current;
@@ -741,7 +781,7 @@ function AimTrainer() {
   // ─── No auto-start — just mount the scene ───
   // (Game waits for user to click "Click to Start")
 
-  // ─── Click detection using Three.js raycaster on the canvas ───
+  // ─── Click detection using Three.js raycaster on the canvas — Hold to spray ───
   useEffect(() => {
     const waitForScene = setInterval(() => {
       const scene = sceneRef.current;
@@ -749,13 +789,11 @@ function AimTrainer() {
       clearInterval(waitForScene);
 
       const canvas = scene.canvas;
+      let isShooting = false;
+      let shootLoop = null;
 
-      const onShoot = (e) => {
-        // Only fire on left mouse button
-        if (e.button !== 0) return;
-        if (!gameActiveRef.current) return;
-        // Don't shoot while settings are open
-        if (showSettingsRef.current) return;
+      const performShot = () => {
+        if (!gameActiveRef.current || showSettingsRef.current) return;
 
         const threeScene = scene.object3D;
         const camera = scene.camera;
@@ -764,19 +802,15 @@ function AimTrainer() {
         const THREE = window.AFRAME.THREE || window.THREE;
         if (!THREE) return;
 
-        // Ray from camera center (where the crosshair/camera is pointing)
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
 
         const meshes = [];
-        // Get the gun model's Object3D so we can exclude it from raycasting
         const gunObject3D = gunRef.current ? gunRef.current.object3D : null;
-        // Get the set-design scenery Object3D to exclude from raycasting
         const sceneryEl = scene.querySelector('.set-design-scenery');
         const sceneryObject3D = sceneryEl ? sceneryEl.object3D : null;
         threeScene.traverse((child) => {
           if (child.isMesh) {
-            // Skip meshes that belong to the FPS weapon rig
             let isExcluded = false;
             if (gunObject3D) {
               let parent = child;
@@ -785,7 +819,6 @@ function AimTrainer() {
                 parent = parent.parent;
               }
             }
-            // Skip meshes that belong to the set-design scenery
             if (!isExcluded && sceneryObject3D) {
               let parent = child;
               while (parent) {
@@ -803,11 +836,7 @@ function AimTrainer() {
         for (const hit of intersects) {
           let obj = hit.object;
           while (obj) {
-            if (
-              obj.el &&
-              obj.el.classList &&
-              obj.el.classList.contains("ball-target")
-            ) {
+            if (obj.el && obj.el.classList && obj.el.classList.contains("ball-target")) {
               hitBall = true;
               const currentBall = ballRef.current;
               if (currentBall) {
@@ -825,8 +854,35 @@ function AimTrainer() {
         }
       };
 
-      canvas.addEventListener("mousedown", onShoot);
-      canvas._aimCleanup = () => canvas.removeEventListener("mousedown", onShoot);
+      const onMouseDown = (e) => {
+        if (e.button !== 0) return;
+        isShooting = true;
+        // Immediately shoot once
+        performShot();
+        // Then continue shooting every ~150ms while held (slower rate)
+        shootLoop = setInterval(() => {
+          if (isShooting) {
+            performShot();
+          }
+        }, 150);
+      };
+
+      const onMouseUp = () => {
+        isShooting = false;
+        if (shootLoop) {
+          clearInterval(shootLoop);
+          shootLoop = null;
+        }
+      };
+
+      canvas.addEventListener("mousedown", onMouseDown);
+      document.addEventListener("mouseup", onMouseUp);
+      
+      canvas._aimCleanup = () => {
+        canvas.removeEventListener("mousedown", onMouseDown);
+        document.removeEventListener("mouseup", onMouseUp);
+        if (shootLoop) clearInterval(shootLoop);
+      };
     }, 100);
 
     return () => {
@@ -909,7 +965,7 @@ function AimTrainer() {
 
       {gameActive && !showSettings && (
         <img
-          src={require("../images/crosshair.png")}
+          src={crosshairImg}
           alt="crosshair"
           className="crosshair"
           draggable={false}
@@ -992,9 +1048,46 @@ function AimTrainer() {
             )}
 
             <p className="settings-hint">Press <kbd>P</kbd> or <kbd>ESC</kbd> to resume</p>
-            <button className="btn-primary" onClick={resumeGame} style={{ marginTop: 12 }}>
+            <button className="btn-primary" onClick={() => setShowSettings(false)} style={{ marginTop: 12, width: "100%" }}>
               ▶ Resume
             </button>
+
+            <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+              <button 
+                className="btn-secondary" 
+                onClick={() => {
+                  clearInterval(timerRef.current);
+                  if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
+                  setGameOver(false);
+                  setWaitingToStart(true);
+                  setCountdown(0);
+                  setScore(0);
+                  setHits(0);
+                  setMisses(0);
+                  setTimeLeft(duration);
+                  setBall(null);
+                  setScoreSaved(false);
+                  setPopEffect(null);
+                  setHitEffect(null);
+                  ballIdRef.current = 0;
+                  setShowSettings(false);
+                }}
+                style={{ flex: 1 }}
+              >
+                🔄 Restart
+              </button>
+              <button 
+                className="btn-secondary" 
+                onClick={() => {
+                  clearInterval(timerRef.current);
+                  if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
+                  dispatch({ type: "SET_PAGE", payload: "home" });
+                }}
+                style={{ flex: 1 }}
+              >
+                🏠 Lobby
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1020,6 +1113,7 @@ function AimTrainer() {
           ref={sceneRef}
           embedded
           vr-mode-ui="enabled: false"
+          inspector="enabled: false"
           renderer="alpha: true; antialias: true; colorManagement: true"
           style={{ width: "100%", height: "100%" }}
         >

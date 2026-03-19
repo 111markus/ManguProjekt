@@ -272,7 +272,23 @@
   background: transparent !important;
 }
 
-/* HUD */
+/* Hide A-Frame UI buttons (fullscreen, VR, etc) */
+.scene-container a-scene [role="button"] {
+  display: none !important;
+}
+.scene-container a-scene .a-ui {
+  display: none !important;
+}
+.scene-container a-scene .vr-mode-ui {
+  display: none !important;
+}
+a-scene button,
+a-scene [data-action] {
+  display: none !important;
+}
+
+
+/* HUD — always visible, even in fullscreen */
 .hud {
   position: fixed;
   top: 0;
@@ -282,7 +298,7 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 16px 24px;
-  z-index: 100;
+  z-index: 200;
   pointer-events: none;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
 }
@@ -377,15 +393,23 @@
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
+  filter: drop-shadow(0 0 12px rgba(255, 68, 68, 0.9));
+  opacity: 1 !important;
+  display: block !important;
+  visibility: visible !important;
 }
 .crosshair::before,
 .crosshair::after {
   display: none;
 }
 
-/* Dot in center of crosshair (no longer needed, hidden) */
+/* Red dot crosshair (fallback if image doesn't load) */
 .crosshair-dot {
-  display: none;
+  width: 6px;
+  height: 6px;
+  background: #ff4444;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #ff4444, 0 0 12px rgba(255, 68, 68, 0.6);
 }
 
 /* Pointer lock prompt */
