@@ -1472,5 +1472,16 @@
     "mode": "classic",
     "duration": 60,
     "date": "2026-03-19T11:52:21.533Z"
+  },
+  {
+    "id": "1773921429874",
+    "name": "asgaga",
+    "score": 269,
+    "hits": 3,
+    "misses": 21,
+    "accuracy": 13,
+    "mode": "classic",
+    "duration": 60,
+    "date": "2026-03-19T11:57:09.874Z"
   }
 ]
