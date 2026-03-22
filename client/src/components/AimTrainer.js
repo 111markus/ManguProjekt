@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useGame } from "../context/GameContext";
-import Waves from "./Waves";
 import crosshairImg from "../images/crosshair.png";
 
 function randomPosition() {
@@ -54,10 +53,11 @@ function AimTrainer() {
   const [crosshairPos, setCrosshairPos] = useState({ x: 0, y: 0 });
   const [pointerLocked, setPointerLocked] = useState(false);
   const [showSettings, setShowSettings] = useState(false); 
-  const [sensitivity, setSensitivity] = useState(1); 
+  const [sensitivity, setSensitivity] = useState(0.5); 
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [soundVolume, setSoundVolume] = useState(0.5);
+  const [soundVolume, setSoundVolume] = useState(0.1);
   const [reloading, setReloading] = useState(false);
+  const [creditsUrl, setCreditsUrl] = useState(null);
 
   
   const sceneRef = useRef(null);
@@ -67,10 +67,11 @@ function AimTrainer() {
   const ballTimeoutRef = useRef(null);
   const ballRef = useRef(null);
   const containerRef = useRef(null);
-  const sensitivityRef = useRef(1);
+  const sensitivityRef = useRef(0.5);
   const gunRef = useRef(null); 
   const soundEnabledRef = useRef(true);
-  const soundVolumeRef = useRef(0.5);
+  const soundVolumeRef = useRef(0.1);
+  const countdownIntervalRef = useRef(null);
   const showSettingsRef = useRef(false);
   const gameOverRef = useRef(false);
 
@@ -79,6 +80,8 @@ function AimTrainer() {
   useEffect(() => { showSettingsRef.current = showSettings; }, [showSettings]);
   useEffect(() => { soundVolumeRef.current = soundVolume; }, [soundVolume]);
   useEffect(() => { gameOverRef.current = gameOver; }, [gameOver]);
+  const countdownRef = useRef(0);
+  useEffect(() => { countdownRef.current = countdown; }, [countdown]);
 
  
   useEffect(() => {
@@ -180,14 +183,6 @@ function AimTrainer() {
     return () => window.removeEventListener("mousemove", onMouseMove);
   }, []);
 
-  
-  useEffect(() => {
-    const onLockChange = () => {
-      setPointerLocked(!!document.pointerLockElement);
-    };
-    document.addEventListener("pointerlockchange", onLockChange);
-    return () => document.removeEventListener("pointerlockchange", onLockChange);
-  }, []);
 
   // ─── Block pointer lock requests while settings are open ───
   useEffect(() => {
@@ -199,8 +194,20 @@ function AimTrainer() {
 
       canvas._origRequestPointerLock = canvas.requestPointerLock.bind(canvas);
       canvas.requestPointerLock = function () {
-        if (showSettingsRef.current || gameOverRef.current) return; // block while settings open or game over
-        canvas._origRequestPointerLock();
+        if (showSettingsRef.current || gameOverRef.current) return;
+        try {
+          const promise = canvas._origRequestPointerLock();
+          if (promise && promise.catch) {
+            promise.catch((err) => {
+              // Ignore standard "user exited before complete" or "not allowed" errors
+              if (err.name !== 'NotAllowedError' && !err.message.includes('exited the lock')) {
+                console.warn("[PointerLock] Request failed:", err);
+              }
+            });
+          }
+        } catch (e) {
+          console.warn("[PointerLock] Sync error:", e);
+        }
       };
       canvas._pointerLockPatched = true;
       clearInterval(tryPatch);
@@ -355,6 +362,9 @@ function AimTrainer() {
     setHitEffect(null);
     setWaitingToStart(false);
     setShowSettings(false);
+    // CRITICAL: Update ref immediately so the pointer lock patch doesn't block us
+    showSettingsRef.current = false;
+    gameActiveRef.current = false; // Will set to true after countdown
     ballIdRef.current = 0;
     if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
 
@@ -364,16 +374,21 @@ function AimTrainer() {
       const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
       if (cam) {
         cam.setAttribute("look-controls", "enabled", true);
+        // Immediate pointer lock on user click (20ms)
+        setTimeout(() => {
+          if (scene.canvas) scene.canvas.requestPointerLock();
+        }, 20);
       }
     }
 
     
     let c = 3;
-    const countdownInterval = setInterval(() => {
+    countdownIntervalRef.current = setInterval(() => {
       c--;
       setCountdown(c);
       if (c <= 0) {
-        clearInterval(countdownInterval);
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
         setCountdown(0);
         setGameActive(true);
       }
@@ -621,6 +636,13 @@ function AimTrainer() {
     clearInterval(timerRef.current);
     // Stop ball timeout so balls don't expire while paused
     if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
+    
+    // Stop countdown if active
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+
     setGameActive(false);
     setShowSettings(true);
     // Exit pointer lock so user can interact with settings UI
@@ -639,35 +661,71 @@ function AimTrainer() {
 
   const resumeGame = useCallback(() => {
     setShowSettings(false);
+    // CRITICAL: Update ref immediately so the pointer lock patch doesn't block us
+    showSettingsRef.current = false;
     // Re-enable look-controls
     const scene = sceneRef.current;
     if (scene) {
       const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
       if (cam) {
         cam.setAttribute("look-controls", "enabled", true);
+        // Immediate pointer lock on user click (20ms)
+        setTimeout(() => {
+          if (scene.canvas) scene.canvas.requestPointerLock();
+        }, 20);
       }
     }
-    // Re-activate the game — the timer useEffect will restart automatically
-    setGameActive(true);
+
+    // If we were in countdown, resume it
+    if (countdownRef.current > 0) {
+      let c = countdownRef.current;
+      countdownIntervalRef.current = setInterval(() => {
+        c--;
+        setCountdown(c);
+        if (c <= 0) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+          setCountdown(0);
+          setGameActive(true);
+        }
+      }, 1000);
+    } else {
+      // Normal game resume
+      setGameActive(true);
+    }
   }, []);
+
+
+  // ─── Pointer lock change listener ───
+  useEffect(() => {
+    const onLockChange = () => {
+      const isLocked = !!document.pointerLockElement;
+      setPointerLocked(isLocked);
+      
+      // If user exits pointer lock (e.g. by ESC) and game is active, show settings immediately
+      if (!isLocked && gameActiveRef.current && !showSettingsRef.current && !gameOverRef.current) {
+        pauseGame();
+      }
+    };
+    document.addEventListener("pointerlockchange", onLockChange);
+    return () => document.removeEventListener("pointerlockchange", onLockChange);
+  }, [pauseGame]);
 
   // ─── P-key toggles settings menu (with pause/resume) ───
   useEffect(() => {
     const onKeyDown = (e) => {
-      if (e.key === "p" || e.key === "P") {
-        // Don't toggle if typing in an input
+      // Toggle settings on P or ESC
+      if (e.key === "p" || e.key === "P" || e.key === "Escape") {
+        // Don't toggle if typing in an input (relevant if we add name inputs etc later)
         if (e.target.tagName === "INPUT") return;
+        
         if (showSettings) {
           // Resume
           resumeGame();
-        } else if (gameActiveRef.current) {
-          // Pause only if game is running
+        } else if (gameActiveRef.current || countdownRef.current > 0) {
+          // Pause only if game or countdown is running
           pauseGame();
         }
-      }
-      // ESC closes settings (resumes)
-      if (e.key === "Escape" && showSettings) {
-        resumeGame();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -778,7 +836,38 @@ function AimTrainer() {
     };
   }, []);
 
-  // ─── No auto-start — just mount the scene ───
+  // ─── Generate credits texture via canvas (Ultimate fix for täpitähed) ───
+  useEffect(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Background (semi-transparent dark)
+    ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+    ctx.roundRect ? ctx.roundRect(0, 0, 1024, 512, 40) : ctx.fillRect(0, 0, 1024, 512);
+    ctx.fill();
+
+    // Text style
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    
+    // Draw "Mängu autorid"
+    ctx.font = "bold 80px sans-serif";
+    ctx.fillText("M\u00e4ngu autorid", 512, 160);
+    
+    // Draw "Markus L. ja Märt H."
+    ctx.font = "60px sans-serif";
+    ctx.fillText("Markus L. ja M\u00e4rt H.", 512, 280);
+    
+    // Draw "VSo25"
+    ctx.font = "bold 50px Courier";
+    ctx.fillText("VSo25", 512, 400);
+
+    setCreditsUrl(canvas.toDataURL());
+  }, []);
   // (Game waits for user to click "Click to Start")
 
   // ─── Click detection using Three.js raycaster on the canvas — Hold to spray ───
@@ -899,11 +988,49 @@ function AimTrainer() {
       {/* ─── "Click to Start" overlay ─── */}
       {waitingToStart && !gameOver && (
         <div className="start-overlay" onClick={startGame}>
-          <div className="start-card">
-            <h2 className="start-title">AIM TRAINER</h2>
-            <p className="start-mode">Classic Mode — {duration}s</p>
-            <div className="start-cta">🎯 Click anywhere to start</div>
-            <p className="start-hint">Press <kbd>P</kbd> during game for settings</p>
+          <div className="start-card-premium">
+            {/* Top Accent Bar */}
+            <div className="start-card-accent"></div>
+            
+            <div className="start-card-inner">
+              <div className="start-hero-mini">
+                <div className="hero-crosshair-wrap mini">
+                  <svg className="hero-crosshair-outer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="22" y1="12" x2="18" y2="12" />
+                    <line x1="6" y1="12" x2="2" y2="12" />
+                  </svg>
+                  <svg className="hero-crosshair-inner" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" />
+                  </svg>
+                </div>
+                <h1 className="start-title-premium">
+                  <span className="hero-react">REACT</span>
+                  <span className="hero-aim">AIM</span>
+                </h1>
+                <div className="start-subtitle-premium">
+                  CLASSIC MODE — {duration}s
+                </div>
+              </div>
+
+              <div className="start-prompt-premium">
+                <div className="start-prompt-pulse"></div>
+                <div className="start-prompt-content">
+                  <span className="start-prompt-icon">🎯</span>
+                  <span className="start-prompt-text">CLICK ANYWHERE TO START</span>
+                </div>
+              </div>
+
+              <div className="start-footer-hint">
+                <div className="start-hint-line"></div>
+                <p className="start-hint-main">
+                  Press <kbd>P</kbd> or <kbd>ESC</kbd> for settings
+                </p>
+                <div className="start-hint-line"></div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -927,10 +1054,18 @@ function AimTrainer() {
             <div className="countdown-display">{countdown}</div>
           )}
           {countdown <= 0 && !gameOver && !showSettings && (
-            <div
-              className={`timer-display ${timeLeft <= 5 ? "timer-danger" : ""}`}
-            >
-              {timeLeft}
+            <div className="timer-container-new">
+              <div
+                className={`timer-display ${timeLeft <= 5 ? "timer-danger" : ""}`}
+              >
+                {timeLeft}
+              </div>
+              <div className="timer-bar-wrapper">
+                <div 
+                  className={`timer-bar-fill ${timeLeft <= 5 ? "timer-bar-pulse" : ""}`}
+                  style={{ width: `${(timeLeft / duration) * 100}%` }}
+                ></div>
+              </div>
             </div>
           )}
           {showSettings && (
@@ -972,121 +1107,146 @@ function AimTrainer() {
         />
       )}
 
-      {gameActive && !pointerLocked && !showSettings && (
-        <div className="pointer-lock-prompt">
-          <p>🖱️ Click on the game to lock your mouse</p>
-          <p className="prompt-sub">Your mouse controls the camera view</p>
-        </div>
-      )}
+
 
       {showSettings && (
         <div className="settings-overlay">
           <div className="settings-card">
-            <h3 className="settings-title">⚙️ Settings</h3>
-            <div className="settings-row">
-              <label className="settings-label">
-                Mouse Sensitivity: <strong>{sensitivity.toFixed(2)}</strong>
-              </label>
-              <input
-                type="range"
-                min="0.1"
-                max="3"
-                step="0.05"
-                value={sensitivity}
-                onChange={(e) => setSensitivity(parseFloat(e.target.value))}
-                className="settings-slider"
-              />
-              <div className="slider-labels">
-                <span>Slow</span>
-                <span>Fast</span>
-              </div>
-            </div>
+            {/* Top Accent Bar */}
+            <div className="settings-accent"></div>
+            <div className="settings-inner">
+              <h3 className="settings-title">⚙️ Settings</h3>
 
-            <div className="settings-row">
-              <label className="settings-label">
-                Sound: <strong>{soundEnabled ? "ON 🔊" : "OFF 🔇"}</strong>
-              </label>
-              <button
-                className={`btn-secondary sound-toggle ${soundEnabled ? "sound-on" : "sound-off"}`}
-                onClick={() => {
-                  const next = !soundEnabled;
-                  setSoundEnabled(next);
-                  
-                  if (next) {
-                    setTimeout(() => {
-                      const a = new Audio("/models/fire.mp3");
-                      a.volume = 0.3;
-                      a.play();
-                    }, 100);
-                  }
-                }}
-                style={{ marginTop: 8 }}
-              >
-                {soundEnabled ? "🔊 Mute" : "🔇 Unmute"}
-              </button>
-            </div>
-
-            {soundEnabled && (
-              <div className="settings-row">
-                <label className="settings-label">
-                  Volume: <strong>{Math.round(soundVolume * 100)}%</strong>
+              {/* Sensitivity */}
+              <div className="settings-section">
+                <label className="settings-section-label">
+                  <span className="settings-label-icon">🎯</span>
+                  Mouse Sensitivity
                 </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={soundVolume}
-                  onChange={(e) => setSoundVolume(parseFloat(e.target.value))}
-                  className="settings-slider"
-                />
-                <div className="slider-labels">
-                  <span>🔈</span>
-                  <span>🔊</span>
+                <div className="settings-control-card">
+                  <div className="settings-value-display">
+                    <span>{sensitivity.toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="3"
+                    step="0.05"
+                    value={sensitivity}
+                    onChange={(e) => setSensitivity(parseFloat(e.target.value))}
+                    className="settings-slider"
+                  />
+                  <div className="slider-labels">
+                    <span>Slow</span>
+                    <span>Fast</span>
+                  </div>
                 </div>
               </div>
-            )}
 
-            <p className="settings-hint">Press <kbd>P</kbd> or <kbd>ESC</kbd> to resume</p>
-            <button className="btn-primary" onClick={() => setShowSettings(false)} style={{ marginTop: 12, width: "100%" }}>
-              ▶ Resume
-            </button>
+              {/* Sound */}
+              <div className="settings-section">
+                <label className="settings-section-label">
+                  <span className="settings-label-icon">🔊</span>
+                  Sound
+                </label>
+                <div className="settings-control-card">
+                  <button
+                    className={`settings-sound-btn ${soundEnabled ? "active" : ""}`}
+                    onClick={() => {
+                      const next = !soundEnabled;
+                      setSoundEnabled(next);
+                      if (next) {
+                        setTimeout(() => {
+                          playSound("/models/fire.mp3");
+                        }, 100);
+                      }
+                    }}
+                  >
+                    {soundEnabled ? "🔊 ON" : "🔇 OFF"}
+                  </button>
+                </div>
+              </div>
 
-            <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-              <button 
-                className="btn-secondary" 
-                onClick={() => {
-                  clearInterval(timerRef.current);
-                  if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
-                  setGameOver(false);
-                  setWaitingToStart(true);
-                  setCountdown(0);
-                  setScore(0);
-                  setHits(0);
-                  setMisses(0);
-                  setTimeLeft(duration);
-                  setBall(null);
-                  setScoreSaved(false);
-                  setPopEffect(null);
-                  setHitEffect(null);
-                  ballIdRef.current = 0;
-                  setShowSettings(false);
-                }}
-                style={{ flex: 1 }}
-              >
-                🔄 Restart
+              {/* Volume */}
+              {soundEnabled && (
+                <div className="settings-section">
+                  <label className="settings-section-label">
+                    <span className="settings-label-icon">🎵</span>
+                    Volume
+                  </label>
+                  <div className="settings-control-card">
+                    <div className="settings-value-display">
+                      <span>{Math.round(soundVolume * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={soundVolume}
+                      onChange={(e) => {
+                        const newVol = parseFloat(e.target.value);
+                        setSoundVolume(newVol);
+                        // Play a short preview sound (throttled/debounced implicitly by user interaction speed)
+                        // Using a manual new Audio here to ensure it uses the NEW volume immediately
+                        try {
+                          const a = new Audio("/models/fire.mp3");
+                          a.volume = newVol;
+                          a.play().catch(() => {});
+                        } catch (e) {}
+                      }}
+                      className="settings-slider"
+                    />
+                    <div className="slider-labels">
+                      <span>🔈</span>
+                      <span>🔊</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <p className="settings-hint">Press <kbd>P</kbd> or <kbd>ESC</kbd> to resume</p>
+
+              {/* Resume Button */}
+              <button className="settings-resume-btn" onClick={resumeGame}>
+                <span>▶</span> RESUME
               </button>
-              <button 
-                className="btn-secondary" 
-                onClick={() => {
-                  clearInterval(timerRef.current);
-                  if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
-                  dispatch({ type: "SET_PAGE", payload: "home" });
-                }}
-                style={{ flex: 1 }}
-              >
-                🏠 Lobby
-              </button>
+
+              {/* Bottom Actions */}
+              <div className="settings-bottom-actions">
+                <button 
+                  className="settings-action-btn"
+                  onClick={() => {
+                    clearInterval(timerRef.current);
+                    if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
+                    setGameOver(false);
+                    setWaitingToStart(true);
+                    setCountdown(0);
+                    setScore(0);
+                    setHits(0);
+                    setMisses(0);
+                    setTimeLeft(duration);
+                    setBall(null);
+                    setScoreSaved(false);
+                    setPopEffect(null);
+                    setHitEffect(null);
+                    ballIdRef.current = 0;
+                    setShowSettings(false);
+                  }}
+                >
+                  🔄 Restart
+                </button>
+                <button 
+                  className="settings-action-btn"
+                  onClick={() => {
+                    clearInterval(timerRef.current);
+                    if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
+                    dispatch({ type: "SET_PAGE", payload: "home" });
+                  }}
+                >
+                  🏠 Lobby
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1094,19 +1254,6 @@ function AimTrainer() {
 
       <div className="scene-container">
         <div className="waves-sky-bg">
-          <Waves
-            lineColor="#5227FF"
-            backgroundColor="#0a0a1a"
-            waveSpeedX={0.02}
-            waveSpeedY={0.01}
-            waveAmpX={40}
-            waveAmpY={20}
-            friction={0.9}
-            tension={0.01}
-            maxCursorMove={120}
-            xGap={12}
-            yGap={36}
-          />
         </div>
 
         <a-scene
@@ -1134,6 +1281,22 @@ function AimTrainer() {
             scale="1 1 1"
             class="set-design-scenery"
           />
+
+          {/* ─── Environmental Scenery ─── */}
+          <a-sky color="#1a1a2e" animation="property: color; to: #16213e; dur: 8000; dir: alternate; loop: true" />
+          
+          {/* ─── Credits behind the player ─── */}
+          <a-entity position="0 2 -10" rotation="0 0 0">
+            {creditsUrl && (
+              <a-plane 
+                src={creditsUrl}
+                width="12" 
+                height="6" 
+                material="transparent: true; shader: flat"
+                position="0 0 0"
+              />
+            )}
+          </a-entity>
 
 
           <a-entity position="0 0 0" rotation="0 180 0">
@@ -1179,81 +1342,110 @@ function AimTrainer() {
       {gameOver && (
         <div className="game-over-overlay">
           <div className="game-over-card">
-            <h2 className="game-over-title">TRAINING COMPLETE</h2>
-            <div className="stats-grid">
-              <div className="stat-item">
-                <span className="stat-label">Final Score</span>
-                <span className="stat-value big">{score}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Hits</span>
-                <span className="stat-value">{hits}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Misses</span>
-                <span className="stat-value">{misses}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Accuracy</span>
-                <span className="stat-value">{accuracy}%</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Duration</span>
-                <span className="stat-value">{duration}s</span>
-              </div>
-            </div>
+            {/* Top Accent Bar */}
+            <div className="game-over-accent"></div>
+            
+            <div className="game-over-inner">
+              <h2 className="game-over-title">TRAINING COMPLETE</h2>
+              
+              <div className="stats-grid-new">
+                {/* Score Section */}
+                <div className="stat-card-new main-stat">
+                  <div className="stat-label-new">
+                    <span className="stat-icon-badge">🏆</span>
+                    FINAL SCORE
+                  </div>
+                  <div className="stat-value-new score-count">{score}</div>
+                </div>
 
-            {/* Conditional — accuracy feedback */}
-            {accuracy >= 80 && (
-              <p className="feedback good">
-                🎯 Excellent accuracy! Sharpshooter!
-              </p>
-            )}
-            {accuracy >= 50 && accuracy < 80 && (
-              <p className="feedback ok">👍 Good aim, keep practicing!</p>
-            )}
-            {accuracy < 50 && accuracy > 0 && (
-              <p className="feedback bad">
-                😤 Keep training, you'll get better!
-              </p>
-            )}
-            {accuracy === 0 && (
-              <p className="feedback bad">🤔 Did you even try?</p>
-            )}
+                {/* Other Stats */}
+                <div className="other-stats-row">
+                  <div className="stat-card-new small">
+                    <div className="stat-label-new">🎯 HITS</div>
+                    <div className="stat-value-new">{hits}</div>
+                  </div>
+                  <div className="stat-card-new small">
+                    <div className="stat-label-new">❌ MISSES</div>
+                    <div className="stat-value-new">{misses}</div>
+                  </div>
+                  <div className="stat-card-new small">
+                    <div className="stat-label-new">✨ ACCURACY</div>
+                    <div className="stat-value-new">{accuracy}%</div>
+                  </div>
+                  <div className="stat-card-new small">
+                    <div className="stat-label-new">⏱️ DURATION</div>
+                    <div className="stat-value-new">{duration}s</div>
+                  </div>
+                </div>
+              </div>
 
-            {scoreSaved && <p className="score-saved-msg">✅ Score saved!</p>}
+              {/* Conditional — accuracy feedback */}
+              <div className="feedback-container">
+                {accuracy >= 80 && (
+                  <div className="feedback-badge perfect">
+                    🎯 Excellent accuracy! Sharpshooter!
+                  </div>
+                )}
+                {accuracy >= 50 && accuracy < 80 && (
+                  <div className="feedback-badge good">
+                    👍 Good aim, keep practicing!
+                  </div>
+                )}
+                {accuracy < 50 && accuracy > 0 && (
+                  <div className="feedback-badge keep-it-up">
+                    😤 Keep training, you'll get better!
+                  </div>
+                )}
+                {accuracy === 0 && (
+                  <div className="feedback-badge keep-it-up">
+                    🤔 Did you even try?
+                  </div>
+                )}
+              </div>
 
-            <div className="game-over-actions">
-              <button className="btn-primary" onClick={() => {
-                setGameOver(false);
-                setWaitingToStart(true);
-                setCountdown(0);
-                setScore(0);
-                setHits(0);
-                setMisses(0);
-                setTimeLeft(duration);
-                setBall(null);
-                setScoreSaved(false);
-                setPopEffect(null);
-                setHitEffect(null);
-                ballIdRef.current = 0;
-              }}>
-                🔄 Play Again
-              </button>
-              <button
-                className="btn-secondary"
-                onClick={() => dispatch({ type: "SET_PAGE", payload: "home" })}
-              >
-                🏠 Home
-              </button>
-              <button
-                className="btn-secondary"
-                onClick={() =>
-                  dispatch({ type: "SET_PAGE", payload: "leaderboard" })
-                }
-              >
-                🏆 Leaderboard
-              </button>
+              {scoreSaved && (
+                <div className="score-saved-new">
+                  <span>✅</span> SCORE SAVED TO LEADERBOARD
+                </div>
+              )}
+
+              <div className="game-over-actions-new">
+                <button 
+                  className="game-over-btn-primary" 
+                  onClick={() => {
+                    setGameOver(false);
+                    setWaitingToStart(true);
+                    setCountdown(3);
+                    setScore(0);
+                    setHits(0);
+                    setMisses(0);
+                    setTimeLeft(duration);
+                    setBall(null);
+                    setScoreSaved(false);
+                    setPopEffect(null);
+                    setHitEffect(null);
+                    ballIdRef.current = 0;
+                  }}
+                >
+                  <span className="btn-icon">🔄</span>
+                  PLAY AGAIN
+                </button>
+                
+                <div className="game-over-btns-row">
+                  <button
+                    className="game-over-btn-secondary"
+                    onClick={() => dispatch({ type: "SET_PAGE", payload: "home" })}
+                  >
+                    <span className="btn-icon-small">🏠</span> Home
+                  </button>
+                  <button
+                    className="game-over-btn-secondary"
+                    onClick={() => dispatch({ type: "SET_PAGE", payload: "leaderboard" })}
+                  >
+                    <span className="btn-icon-small">🏆</span> Leaderboard
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -19,6 +19,7 @@ const initialState = {
   },
   sortField: "score",
   sortOrder: "desc",
+  filterQuery: "", // New State for searching
 };
 
 // ─── Reducer ───
@@ -49,6 +50,8 @@ function gameReducer(state, action) {
         sortField: action.payload.field,
         sortOrder: action.payload.order,
       };
+    case "SET_FILTER":
+      return { ...state, filterQuery: action.payload };
     default:
       return state;
   }
@@ -111,10 +114,18 @@ export function GameProvider({ children }) {
     }
   }, []);
 
-  // Derived: sorted scores
+  // Derived: sorted & filtered scores
   const getSortedScores = useCallback(() => {
-    const sorted = [...state.scores];
-    sorted.sort((a, b) => {
+    let filtered = [...state.scores];
+
+    // Apply Filter
+    if (state.filterQuery.trim()) {
+      const q = state.filterQuery.toLowerCase();
+      filtered = filtered.filter((s) => s.name.toLowerCase().includes(q));
+    }
+
+    // Apply Sort
+    filtered.sort((a, b) => {
       const dir = state.sortOrder === "asc" ? 1 : -1;
       if (state.sortField === "date") {
         return (new Date(a.date) - new Date(b.date)) * dir;
@@ -128,8 +139,8 @@ export function GameProvider({ children }) {
         ) * dir
       );
     });
-    return sorted;
-  }, [state.scores, state.sortField, state.sortOrder]);
+    return filtered;
+  }, [state.scores, state.sortField, state.sortOrder, state.filterQuery]);
 
   const value = {
     state,

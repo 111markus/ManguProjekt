@@ -33,17 +33,39 @@ function Leaderboard() {
 
   return (
     <div className="leaderboard-page">
-      <div className="lb-header">
+      {/* Background effects same as home page for consistency */}
+      <div className="home-bg-effects">
+        <div className="home-glow home-glow-1" />
+        <div className="home-glow home-glow-2" />
+        <div className="home-glow home-glow-3" />
+      </div>
+      <div className="home-grid-overlay" />
+
+      <header className="lb-header">
         <button
           className="back-btn-lb"
           onClick={() => dispatch({ type: "SET_PAGE", payload: "home" })}
         >
-          ← Back
+          ← EXIT
         </button>
         <h1 className="lb-title">
-          🏆 LEADER<span className="accent">BOARD</span>
+          <span className="lb-title-icon">🏆</span> LEADERBOARD
         </h1>
-      </div>
+        
+        {/* Search Input — Meeting Requirement: useReducer Filters */}
+        <div className="lb-search-wrap">
+          <span className="lb-search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Search player..."
+            className="lb-search-input"
+            value={state.filterQuery}
+            onChange={(e) =>
+              dispatch({ type: "SET_FILTER", payload: e.target.value })
+            }
+          />
+        </div>
+      </header>
 
       {/* Conditional — loading spinner */}
       {state.loading && (
@@ -89,7 +111,7 @@ function Leaderboard() {
           <table className="lb-table">
             <thead>
               <tr>
-                <th>#</th>
+                <th className="rank">#</th>
                 <th onClick={() => handleSort("name")} className="sortable">
                   Player{sortIndicator("name")}
                 </th>
@@ -100,13 +122,10 @@ function Leaderboard() {
                   Accuracy{sortIndicator("accuracy")}
                 </th>
                 <th>Hits</th>
-                <th onClick={() => handleSort("mode")} className="sortable">
-                  Mode{sortIndicator("mode")}
-                </th>
                 <th onClick={() => handleSort("date")} className="sortable">
                   Date{sortIndicator("date")}
                 </th>
-                <th>Actions</th>
+                <th className="actions-cell">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -114,20 +133,19 @@ function Leaderboard() {
               {sortedScores.map((s, index) => (
                 <tr key={s.id} className={index < 3 ? `top-${index + 1}` : ""}>
                   <td className="rank">
-                    {index === 0 && "🥇"}
-                    {index === 1 && "🥈"}
-                    {index === 2 && "🥉"}
+                    {index === 0 && <span className="rank-medal">🥇</span>}
+                    {index === 1 && <span className="rank-medal">🥈</span>}
+                    {index === 2 && <span className="rank-medal">🥉</span>}
                     {index > 2 && index + 1}
                   </td>
                   <td className="player-name">{s.name}</td>
                   <td className="score-cell">{s.score}</td>
-                  <td>{s.accuracy}%</td>
-                  <td>{s.hits}</td>
-                  <td className="mode-cell">{s.mode}</td>
+                  <td className="accuracy-cell">{s.accuracy}%</td>
+                  <td className="hits-cell">{s.hits}</td>
                   <td className="date-cell">
                     {new Date(s.date).toLocaleDateString("et-EE")}
                   </td>
-                  <td>
+                  <td className="actions-cell">
                     <button
                       className="delete-btn"
                       onClick={() => deleteScore(s.id)}
