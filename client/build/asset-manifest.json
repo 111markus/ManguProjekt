@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/static/css/main.a21f9ab6.css",
-    "main.js": "/static/js/main.48ac97fe.js",
-    "index.html": "/index.html",
-    "main.a21f9ab6.css.map": "/static/css/main.a21f9ab6.css.map",
-    "main.48ac97fe.js.map": "/static/js/main.48ac97fe.js.map"
+    "main.css": "/veebiarendus/ManguProjekt/static/css/main.a21f9ab6.css",
+    "main.js": "/veebiarendus/ManguProjekt/static/js/main.2e3c0227.js",
+    "index.html": "/veebiarendus/ManguProjekt/index.html",
+    "main.a21f9ab6.css.map": "/veebiarendus/ManguProjekt/static/css/main.a21f9ab6.css.map",
+    "main.2e3c0227.js.map": "/veebiarendus/ManguProjekt/static/js/main.2e3c0227.js.map"
   },
   "entrypoints": [
     "static/css/main.a21f9ab6.css",
-    "static/js/main.48ac97fe.js"
+    "static/js/main.2e3c0227.js"
   ]
 }
