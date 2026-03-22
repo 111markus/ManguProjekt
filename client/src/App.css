@@ -102,8 +102,13 @@
 }
 
 @keyframes glowPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* ─── Grid Pattern Overlay ─── */
@@ -111,8 +116,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(239,68,68,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(239,68,68,0.03) 1px, transparent 1px);
+    linear-gradient(rgba(239, 68, 68, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(239, 68, 68, 0.03) 1px, transparent 1px);
   background-size: 50px 50px;
   pointer-events: none;
 }
@@ -164,8 +169,12 @@
 }
 
 @keyframes crosshairSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Hero Title */
@@ -223,6 +232,7 @@
   font-weight: 600;
 }
 .splash-tagline {
+  margin-top: 100px;
   margin-bottom: 32px;
   color: #a1a1aa;
   font-weight: 700;
@@ -237,7 +247,8 @@
 }
 
 .home-card {
-  background: linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     rgba(24, 24, 27, 0.9),
     rgba(24, 24, 27, 0.7),
     rgba(9, 9, 11, 0.9)
@@ -286,12 +297,20 @@
   width: 44px; /* Increased from 32px */
   height: 44px; /* Increased from 32px */
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(113, 113, 122, 0.2), rgba(113, 113, 122, 0.1));
+  background: linear-gradient(
+    135deg,
+    rgba(113, 113, 122, 0.2),
+    rgba(113, 113, 122, 0.1)
+  );
   border: 1px solid rgba(113, 113, 122, 0.3);
   font-size: 1.2rem; /* Increased icon font size */
 }
 .home-label-icon-purple {
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(168, 85, 247, 0.1));
+  background: linear-gradient(
+    135deg,
+    rgba(168, 85, 247, 0.2),
+    rgba(168, 85, 247, 0.1)
+  );
   border-color: rgba(168, 85, 247, 0.3);
 }
 
@@ -394,7 +413,7 @@
 .home-btn-start-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.2), transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.2), transparent);
   pointer-events: none;
 }
 .home-btn-icon {
@@ -513,7 +532,6 @@ a-scene button,
 a-scene [data-action] {
   display: none !important;
 }
-
 
 /* HUD — always visible, even in fullscreen */
 .hud {
@@ -646,7 +664,9 @@ a-scene [data-action] {
   height: 6px;
   background: #ff4444;
   border-radius: 50%;
-  box-shadow: 0 0 8px #ff4444, 0 0 12px rgba(255, 68, 68, 0.6);
+  box-shadow:
+    0 0 8px #ff4444,
+    0 0 12px rgba(255, 68, 68, 0.6);
 }
 
 /* Pointer lock prompt */
@@ -672,8 +692,14 @@ a-scene [data-action] {
   margin-top: 8px;
 }
 @keyframes fadeInPrompt {
-  from { opacity: 0; transform: translate(-50%, -40%); }
-  to { opacity: 1; transform: translate(-50%, -50%); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
 }
 
 .miss-val {
@@ -744,7 +770,8 @@ a-scene [data-action] {
 }
 
 .settings-card {
-  background: linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     rgba(24, 24, 27, 0.95),
     rgba(24, 24, 27, 0.85),
     rgba(9, 9, 11, 0.95)
@@ -752,7 +779,9 @@ a-scene [data-action] {
   backdrop-filter: blur(20px);
   border-radius: 2rem;
   border: 1px solid rgba(239, 68, 68, 0.15);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(239, 68, 68, 0.06);
+  box-shadow:
+    0 25px 60px rgba(0, 0, 0, 0.5),
+    0 0 40px rgba(239, 68, 68, 0.06);
   min-width: 480px;
   max-width: 520px;
   width: 90%;
@@ -804,7 +833,11 @@ a-scene [data-action] {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.15),
+    rgba(239, 68, 68, 0.05)
+  );
   border: 1px solid rgba(239, 68, 68, 0.2);
   font-size: 1rem;
 }
@@ -834,7 +867,11 @@ a-scene [data-action] {
   height: 6px;
   -webkit-appearance: none;
   appearance: none;
-  background: linear-gradient(to right, rgba(239, 68, 68, 0.3), rgba(239, 68, 68, 0.15));
+  background: linear-gradient(
+    to right,
+    rgba(239, 68, 68, 0.3),
+    rgba(239, 68, 68, 0.15)
+  );
   border-radius: 3px;
   outline: none;
   cursor: pointer;
@@ -846,7 +883,9 @@ a-scene [data-action] {
   border-radius: 50%;
   background: linear-gradient(135deg, #ef4444, #dc2626);
   cursor: pointer;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 0 12px rgba(239, 68, 68, 0.5),
+    0 2px 6px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s;
 }
 .settings-slider::-webkit-slider-thumb:hover {
@@ -859,7 +898,9 @@ a-scene [data-action] {
   background: linear-gradient(135deg, #ef4444, #dc2626);
   cursor: pointer;
   border: none;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 0 12px rgba(239, 68, 68, 0.5),
+    0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .slider-labels {
@@ -891,7 +932,11 @@ a-scene [data-action] {
   color: #f87171;
 }
 .settings-sound-btn.active {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.15),
+    rgba(239, 68, 68, 0.05)
+  );
   border-color: rgba(239, 68, 68, 0.3);
   color: #f87171;
 }
@@ -991,15 +1036,18 @@ a-scene [data-action] {
 }
 
 .game-over-card {
-  background: linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     rgba(24, 24, 27, 0.98),
-    rgba(24, 24, 27, 0.90),
+    rgba(24, 24, 27, 0.9),
     rgba(9, 9, 11, 0.98)
   );
   backdrop-filter: blur(25px);
   border-radius: 2.5rem;
   border: 1px solid rgba(239, 68, 68, 0.2);
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.7), 0 0 60px rgba(239, 68, 68, 0.1);
+  box-shadow:
+    0 40px 100px rgba(0, 0, 0, 0.7),
+    0 0 60px rgba(239, 68, 68, 0.1);
   min-width: 580px;
   max-width: 700px;
   width: 90%;
@@ -1008,13 +1056,26 @@ a-scene [data-action] {
 }
 
 @keyframes slideUpLarge {
-  from { opacity: 0; transform: translateY(40px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .game-over-accent {
   height: 4px;
-  background: linear-gradient(90deg, transparent, #ef4444, #dc2626, #ef4444, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #ef4444,
+    #dc2626,
+    #ef4444,
+    transparent
+  );
   box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
 }
 
@@ -1053,7 +1114,9 @@ a-scene [data-action] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: transform 0.3s ease, border-color 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    border-color 0.3s ease;
 }
 .stat-card-new:hover {
   transform: translateY(-4px);
@@ -1061,7 +1124,11 @@ a-scene [data-action] {
 }
 
 .stat-card-new.main-stat {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02));
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.08),
+    rgba(239, 68, 68, 0.02)
+  );
   border: 1px solid rgba(239, 68, 68, 0.15);
   padding: 35px;
 }
@@ -1250,7 +1317,8 @@ a-scene [data-action] {
 }
 
 .start-card-premium {
-  background: linear-gradient(135deg,
+  background: linear-gradient(
+    135deg,
     rgba(24, 24, 27, 0.98),
     rgba(24, 24, 27, 0.92),
     rgba(9, 9, 11, 0.98)
@@ -1258,7 +1326,9 @@ a-scene [data-action] {
   backdrop-filter: blur(25px);
   border-radius: 2.5rem;
   border: 1px solid rgba(239, 68, 68, 0.2);
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.7), 0 0 60px rgba(239, 68, 68, 0.1);
+  box-shadow:
+    0 40px 100px rgba(0, 0, 0, 0.7),
+    0 0 60px rgba(239, 68, 68, 0.1);
   min-width: 580px;
   max-width: 700px;
   width: 90%;
@@ -1268,7 +1338,14 @@ a-scene [data-action] {
 
 .start-card-accent {
   height: 4px;
-  background: linear-gradient(90deg, transparent, #ef4444, #dc2626, #ef4444, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #ef4444,
+    #dc2626,
+    #ef4444,
+    transparent
+  );
   box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
 }
 
@@ -1344,7 +1421,11 @@ a-scene [data-action] {
 .start-prompt-pulse {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle, rgba(239, 68, 68, 0.18) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(239, 68, 68, 0.18) 0%,
+    transparent 70%
+  );
   animation: startPulse 2s ease-in-out infinite;
 }
 
@@ -1379,7 +1460,12 @@ a-scene [data-action] {
 .start-hint-line {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.12),
+    transparent
+  );
 }
 
 .start-hint-main {
@@ -1555,8 +1641,9 @@ a-scene [data-action] {
 
 /* ─── Table Wrapper (Glassmorphism) ─── */
 .lb-table-wrapper {
-  background: linear-gradient(135deg, 
-    rgba(24, 24, 27, 0.95), 
+  background: linear-gradient(
+    135deg,
+    rgba(24, 24, 27, 0.95),
     rgba(18, 18, 20, 0.85)
   );
   backdrop-filter: blur(20px);
@@ -1576,7 +1663,14 @@ a-scene [data-action] {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, transparent, #ef4444, #dc2626, #ef4444, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #ef4444,
+    #dc2626,
+    #ef4444,
+    transparent
+  );
   z-index: 10;
 }
 
@@ -1668,33 +1762,55 @@ a-scene [data-action] {
 }
 
 /* ─── Top 3 Rank Colors ─── */
-.lb-table tr.top-1 td { 
-  background: linear-gradient(90deg, rgba(255, 215, 0, 0.12) 0%, transparent 100%); 
+.lb-table tr.top-1 td {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 215, 0, 0.12) 0%,
+    transparent 100%
+  );
   border-bottom-color: rgba(255, 215, 0, 0.2);
 }
-.lb-table tr.top-2 td { 
-  background: linear-gradient(90deg, rgba(192, 192, 192, 0.08) 0%, transparent 100%); 
+.lb-table tr.top-2 td {
+  background: linear-gradient(
+    90deg,
+    rgba(192, 192, 192, 0.08) 0%,
+    transparent 100%
+  );
   border-bottom-color: rgba(192, 192, 192, 0.15);
 }
-.lb-table tr.top-3 td { 
-  background: linear-gradient(90deg, rgba(205, 127, 50, 0.08) 0%, transparent 100%); 
+.lb-table tr.top-3 td {
+  background: linear-gradient(
+    90deg,
+    rgba(205, 127, 50, 0.08) 0%,
+    transparent 100%
+  );
   border-bottom-color: rgba(205, 127, 50, 0.15);
 }
 
-.lb-table tr.top-1 .score-cell { color: #ffd700 !important; }
-.lb-table tr.top-2 .score-cell { color: #e2e2e2 !important; }
-.lb-table tr.top-3 .score-cell { color: #cd7f32 !important; }
+.lb-table tr.top-1 .score-cell {
+  color: #ffd700 !important;
+}
+.lb-table tr.top-2 .score-cell {
+  color: #e2e2e2 !important;
+}
+.lb-table tr.top-3 .score-cell {
+  color: #cd7f32 !important;
+}
 
 .rank-medal {
   font-size: 1.7rem;
-  filter: drop-shadow(0 0 12px rgba(0,0,0,0.6));
+  filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.6));
   display: inline-block;
   animation: medalBounce 2s ease-in-out infinite alternate;
 }
 
 @keyframes medalBounce {
-  from { transform: translateY(0); }
-  to { transform: translateY(-3px); }
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-3px);
+  }
 }
 
 /* ─── Actions ─── */
@@ -1719,7 +1835,6 @@ a-scene [data-action] {
   transform: scale(1.1);
   box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
 }
-
 
 /* ─── Loading & Empty States (Premium) ─── */
 .loading-spinner {
@@ -1755,7 +1870,6 @@ a-scene [data-action] {
   margin-bottom: 30px;
   letter-spacing: 2px;
 }
-
 
 /* ════════════════════════════════════════════
    RESPONSIVE
@@ -1807,7 +1921,9 @@ a-scene [data-action] {
   height: 100%;
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-  transition: width 1.05s linear, background-color 0.3s ease;
+  transition:
+    width 1.05s linear,
+    background-color 0.3s ease;
 }
 
 .timer-bar-pulse {
@@ -1817,6 +1933,12 @@ a-scene [data-action] {
 }
 
 @keyframes timerBarPulse {
-  from { opacity: 1; transform: scaleY(1); }
-  to { opacity: 0.7; transform: scaleY(1.4); }
+  from {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  to {
+    opacity: 0.7;
+    transform: scaleY(1.4);
+  }
 }

@@ -4,6 +4,8 @@ import React, {
   useContext,
   useCallback,
 } from "react";
+import { database } from "../firebase";
+import { ref, push, get, remove, child } from "firebase/database";
 
 // ─── Initial State ───
 const initialState = {
@@ -64,35 +66,42 @@ const GameContext = createContext(null);
 export function GameProvider({ children }) {
   const [state, dispatch] = useReducer(gameReducer, initialState);
 
-  // Fetch scores from backend
+  // Fetch scores from Firebase
   const loadScores = useCallback(async () => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
-      const res = await fetch("/api/scores");
-      if (!res.ok) throw new Error("Failed to load scores");
-      const data = await res.json();
-      dispatch({ type: "SET_SCORES", payload: data });
+      const dbRef = ref(database);
+      const snapshot = await get(child(dbRef, "scores"));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        // Convert object to array with IDs
+        const scoresArray = Object.entries(data).map(([id, score]) => ({
+          id,
+          ...score,
+        }));
+        dispatch({ type: "SET_SCORES", payload: scoresArray });
+      } else {
+        dispatch({ type: "SET_SCORES", payload: [] });
+      }
     } catch (err) {
       dispatch({ type: "SET_ERROR", payload: err.message });
     }
   }, []);
 
-  // Save score to backend
+  // Save score to Firebase
   const saveScore = useCallback(
     async (scoreData) => {
       try {
-        const res = await fetch("/api/scores", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: state.playerName || "Anonymous",
-            ...scoreData,
-          }),
-        });
-        if (!res.ok) throw new Error("Failed to save score");
-        const saved = await res.json();
-        dispatch({ type: "ADD_SCORE", payload: saved });
-        return saved;
+        const scoresRef = ref(database, "scores");
+        const newScore = {
+          name: state.playerName || "Anonymous",
+          ...scoreData,
+          date: new Date().toISOString(),
+        };
+        const newRef = await push(scoresRef, newScore);
+        const savedScore = { id: newRef.key, ...newScore };
+        dispatch({ type: "ADD_SCORE", payload: savedScore });
+        return savedScore;
       } catch (err) {
         dispatch({ type: "SET_ERROR", payload: err.message });
         return null;
@@ -101,14 +110,24 @@ export function GameProvider({ children }) {
     [state.playerName],
   );
 
-  // Delete a score
+  // Delete a score from Firebase
   const deleteScore = useCallback(async (id) => {
     try {
-      await fetch(`/api/scores/${id}`, { method: "DELETE" });
-      // Reload
-      const res = await fetch("/api/scores");
-      const data = await res.json();
-      dispatch({ type: "SET_SCORES", payload: data });
+      const scoreRef = ref(database, `scores/${id}`);
+      await remove(scoreRef);
+      // Reload scores after deletion
+      const dbRef = ref(database);
+      const snapshot = await get(child(dbRef, "scores"));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const scoresArray = Object.entries(data).map(([id, score]) => ({
+          id,
+          ...score,
+        }));
+        dispatch({ type: "SET_SCORES", payload: scoresArray });
+      } else {
+        dispatch({ type: "SET_SCORES", payload: [] });
+      }
     } catch (err) {
       dispatch({ type: "SET_ERROR", payload: err.message });
     }
