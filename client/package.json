@@ -2,7 +2,6 @@
   "name": "aimtrainer-client",
   "version": "1.0.0",
   "private": true,
-  "homepage": "/veebiarendus/ReactAim",
   "proxy": "http://localhost:3001",
   "dependencies": {
     "aframe": "^1.6.0",

@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/veebiarendus/ReactAim/static/css/main.a21f9ab6.css",
-    "main.js": "/veebiarendus/ReactAim/static/js/main.d0df5be7.js",
-    "index.html": "/veebiarendus/ReactAim/index.html",
-    "main.a21f9ab6.css.map": "/veebiarendus/ReactAim/static/css/main.a21f9ab6.css.map",
-    "main.d0df5be7.js.map": "/veebiarendus/ReactAim/static/js/main.d0df5be7.js.map"
+    "main.css": "/static/css/main.a21f9ab6.css",
+    "main.js": "/static/js/main.48ac97fe.js",
+    "index.html": "/index.html",
+    "main.a21f9ab6.css.map": "/static/css/main.a21f9ab6.css.map",
+    "main.48ac97fe.js.map": "/static/js/main.48ac97fe.js.map"
   },
   "entrypoints": [
     "static/css/main.a21f9ab6.css",
-    "static/js/main.d0df5be7.js"
+    "static/js/main.48ac97fe.js"
   ]
 }
