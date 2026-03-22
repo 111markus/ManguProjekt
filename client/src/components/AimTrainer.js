@@ -37,7 +37,6 @@ function AimTrainer() {
   const { state, dispatch, saveScore } = useGame();
   const { duration } = state.gameSettings;
 
-
   const [ball, setBall] = useState(null);
   const [score, setScore] = useState(0);
   const [hits, setHits] = useState(0);
@@ -45,21 +44,20 @@ function AimTrainer() {
   const [timeLeft, setTimeLeft] = useState(duration);
   const [gameActive, setGameActive] = useState(false);
   const [gameOver, setGameOver] = useState(false);
-  const [countdown, setCountdown] = useState(0); 
-  const [waitingToStart, setWaitingToStart] = useState(true); 
+  const [countdown, setCountdown] = useState(0);
+  const [waitingToStart, setWaitingToStart] = useState(true);
   const [scoreSaved, setScoreSaved] = useState(false);
   const [hitEffect, setHitEffect] = useState(null);
   const [popEffect, setPopEffect] = useState(null);
   const [crosshairPos, setCrosshairPos] = useState({ x: 0, y: 0 });
   const [pointerLocked, setPointerLocked] = useState(false);
-  const [showSettings, setShowSettings] = useState(false); 
-  const [sensitivity, setSensitivity] = useState(0.5); 
+  const [showSettings, setShowSettings] = useState(false);
+  const [sensitivity, setSensitivity] = useState(0.5);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundVolume, setSoundVolume] = useState(0.1);
   const [reloading, setReloading] = useState(false);
   const [creditsUrl, setCreditsUrl] = useState(null);
 
-  
   const sceneRef = useRef(null);
   const timerRef = useRef(null);
   const ballIdRef = useRef(0);
@@ -68,28 +66,36 @@ function AimTrainer() {
   const ballRef = useRef(null);
   const containerRef = useRef(null);
   const sensitivityRef = useRef(0.5);
-  const gunRef = useRef(null); 
+  const gunRef = useRef(null);
   const soundEnabledRef = useRef(true);
   const soundVolumeRef = useRef(0.1);
   const countdownIntervalRef = useRef(null);
   const showSettingsRef = useRef(false);
   const gameOverRef = useRef(false);
 
-  
-  useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
-  useEffect(() => { showSettingsRef.current = showSettings; }, [showSettings]);
-  useEffect(() => { soundVolumeRef.current = soundVolume; }, [soundVolume]);
-  useEffect(() => { gameOverRef.current = gameOver; }, [gameOver]);
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
+  useEffect(() => {
+    showSettingsRef.current = showSettings;
+  }, [showSettings]);
+  useEffect(() => {
+    soundVolumeRef.current = soundVolume;
+  }, [soundVolume]);
+  useEffect(() => {
+    gameOverRef.current = gameOver;
+  }, [gameOver]);
   const countdownRef = useRef(0);
-  useEffect(() => { countdownRef.current = countdown; }, [countdown]);
+  useEffect(() => {
+    countdownRef.current = countdown;
+  }, [countdown]);
 
- 
   useEffect(() => {
     let unlocked = false;
     const unlock = () => {
       if (unlocked) return;
       unlocked = true;
-     
+
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const buf = ctx.createBuffer(1, 1, 22050);
@@ -101,9 +107,11 @@ function AimTrainer() {
       } catch (e) {
         console.warn("[Audio] Could not unlock AudioContext:", e);
       }
-      
+
       try {
-        const a = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=");
+        const a = new Audio(
+          "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=",
+        );
         a.volume = 0;
         a.play().catch(() => {});
       } catch (e) {}
@@ -121,9 +129,13 @@ function AimTrainer() {
     };
   }, []);
 
-  
   const playSound = useCallback((src, volumeMultiplier = 1.0) => {
-    console.log("[Audio] playSound called, enabled:", soundEnabledRef.current, "src:", src);
+    console.log(
+      "[Audio] playSound called, enabled:",
+      soundEnabledRef.current,
+      "src:",
+      src,
+    );
     if (!soundEnabledRef.current) {
       console.log("[Audio] Sound disabled, skipping");
       return;
@@ -133,22 +145,28 @@ function AimTrainer() {
       a.volume = soundVolumeRef.current * volumeMultiplier;
       const promise = a.play();
       if (promise && promise.then) {
-        promise.then(() => {
-          console.log("[Audio] ✅ Playing:", src);
-        }).catch((err) => {
-          console.error("[Audio] ❌ Play failed:", err.message, err.name);
-        });
+        promise
+          .then(() => {
+            console.log("[Audio] ✅ Playing:", src);
+          })
+          .catch((err) => {
+            console.error("[Audio] ❌ Play failed:", err.message, err.name);
+          });
       }
     } catch (e) {
       console.error("[Audio] ❌ Error creating Audio:", e);
     }
   }, []);
 
-  
-  const playFire = useCallback(() => playSound("/models/fire.mp3"), [playSound]);
-  const playReload = useCallback(() => playSound("/models/reload.mp3"), [playSound]);
+  const playFire = useCallback(
+    () => playSound(process.env.PUBLIC_URL + "/models/fire.mp3"),
+    [playSound],
+  );
+  const playReload = useCallback(
+    () => playSound(process.env.PUBLIC_URL + "/models/reload.mp3"),
+    [playSound],
+  );
 
-  
   useEffect(() => {
     const preload = (src) => {
       const a = new Audio(src);
@@ -156,11 +174,10 @@ function AimTrainer() {
       a.load();
       console.log("[Audio] Preloading:", src);
     };
-    preload("/models/fire.mp3");
-    preload("/models/reload.mp3");
+    preload(process.env.PUBLIC_URL + "/models/fire.mp3");
+    preload(process.env.PUBLIC_URL + "/models/reload.mp3");
   }, []);
 
-  
   useEffect(() => {
     gameActiveRef.current = gameActive;
   }, [gameActive]);
@@ -174,7 +191,6 @@ function AimTrainer() {
   const accuracy =
     hits + misses > 0 ? Math.round((hits / (hits + misses)) * 100) : 0;
 
-  
   useEffect(() => {
     const onMouseMove = (e) => {
       setCrosshairPos({ x: e.clientX, y: e.clientY });
@@ -183,14 +199,16 @@ function AimTrainer() {
     return () => window.removeEventListener("mousemove", onMouseMove);
   }, []);
 
-
   // ─── Block pointer lock requests while settings are open ───
   useEffect(() => {
     const tryPatch = setInterval(() => {
       const scene = sceneRef.current;
       if (!scene || !scene.canvas) return;
       const canvas = scene.canvas;
-      if (canvas._pointerLockPatched) { clearInterval(tryPatch); return; }
+      if (canvas._pointerLockPatched) {
+        clearInterval(tryPatch);
+        return;
+      }
 
       canvas._origRequestPointerLock = canvas.requestPointerLock.bind(canvas);
       canvas.requestPointerLock = function () {
@@ -200,7 +218,10 @@ function AimTrainer() {
           if (promise && promise.catch) {
             promise.catch((err) => {
               // Ignore standard "user exited before complete" or "not allowed" errors
-              if (err.name !== 'NotAllowedError' && !err.message.includes('exited the lock')) {
+              if (
+                err.name !== "NotAllowedError" &&
+                !err.message.includes("exited the lock")
+              ) {
                 console.warn("[PointerLock] Request failed:", err);
               }
             });
@@ -215,7 +236,6 @@ function AimTrainer() {
     return () => clearInterval(tryPatch);
   }, []);
 
-  
   useEffect(() => {
     let disposed = false;
     let retryTimer = null;
@@ -227,13 +247,13 @@ function AimTrainer() {
         retryTimer = setTimeout(makeTransparent, 300);
         return;
       }
-      
+
       scene.renderer.setClearColor(0x000000, 0);
-      
+
       if (scene.object3D) {
         scene.object3D.background = null;
       }
-      
+
       const canvas = scene.canvas;
       if (canvas) {
         canvas.style.background = "transparent";
@@ -247,7 +267,6 @@ function AimTrainer() {
     };
   }, []);
 
-  
   useEffect(() => {
     let gunEntity = null;
     let disposed = false;
@@ -262,37 +281,45 @@ function AimTrainer() {
         return;
       }
 
-      
-      const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
+      const cam =
+        scene.querySelector("[camera]") || scene.querySelector("a-camera");
       if (!cam) {
         console.warn("[FPS Rig] Camera not found, retrying in 500ms...");
         retryTimer = setTimeout(setupGun, 500);
         return;
       }
 
-     
       if (cam.querySelector("#fps-weapon-rig")) {
         console.log("[FPS Rig] Already exists, skipping.");
         gunRef.current = cam.querySelector("#fps-weapon-rig");
         return;
       }
 
-      console.log("[FPS Rig] Camera found:", cam.tagName, "- creating weapon entity...");
+      console.log(
+        "[FPS Rig] Camera found:",
+        cam.tagName,
+        "- creating weapon entity...",
+      );
 
-      
       gunEntity = document.createElement("a-entity");
       gunEntity.setAttribute("id", "fps-weapon-rig");
-      gunEntity.setAttribute("gltf-model", "url(/models/fps-rig-akm.glb)");
+      gunEntity.setAttribute(
+        "gltf-model",
+        "url(" + process.env.PUBLIC_URL + "/models/fps-rig-akm.glb)",
+      );
       gunEntity.setAttribute("position", "0.4 -0.4 -0.6");
       gunEntity.setAttribute("rotation", "360 75 0");
       gunEntity.setAttribute("scale", "0.1 0.1 0.1");
 
       gunEntity.addEventListener("model-loaded", () => {
         console.log("[FPS Rig] ✅ Model loaded successfully!");
-       
+
         const mesh = gunEntity.getObject3D("mesh");
         if (mesh && mesh.animations) {
-          console.log("[FPS Rig] Available animations:", mesh.animations.map(a => a.name));
+          console.log(
+            "[FPS Rig] Available animations:",
+            mesh.animations.map((a) => a.name),
+          );
         }
         gunEntity.setAttribute("animation-mixer", {
           clip: "Armature|Idle",
@@ -305,15 +332,12 @@ function AimTrainer() {
         console.error("[FPS Rig] ❌ Model failed to load:", e.detail);
       });
 
-      
       cam.appendChild(gunEntity);
 
-      
       gunRef.current = gunEntity;
       console.log("[FPS Rig] Entity appended to camera");
     };
 
-    
     retryTimer = setTimeout(setupGun, 500);
 
     return () => {
@@ -326,7 +350,6 @@ function AimTrainer() {
     };
   }, []);
 
-  
   const spawnBall = useCallback(() => {
     if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
 
@@ -338,7 +361,6 @@ function AimTrainer() {
 
     setBall({ id, ...pos, radius, color, points });
 
-    
     ballTimeoutRef.current = setTimeout(() => {
       if (gameActiveRef.current) {
         setMisses((prev) => prev + 1);
@@ -347,7 +369,6 @@ function AimTrainer() {
     }, 3000);
   }, []);
 
-  
   const startGame = useCallback(() => {
     setScore(0);
     setHits(0);
@@ -371,7 +392,8 @@ function AimTrainer() {
     // Re-enable look-controls for the new game
     const scene = sceneRef.current;
     if (scene) {
-      const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
+      const cam =
+        scene.querySelector("[camera]") || scene.querySelector("a-camera");
       if (cam) {
         cam.setAttribute("look-controls", "enabled", true);
         // Immediate pointer lock on user click (20ms)
@@ -381,7 +403,6 @@ function AimTrainer() {
       }
     }
 
-    
     let c = 3;
     countdownIntervalRef.current = setInterval(() => {
       c--;
@@ -395,7 +416,6 @@ function AimTrainer() {
     }, 1000);
   }, [duration]);
 
-  
   useEffect(() => {
     if (!gameActive) return;
 
@@ -416,7 +436,6 @@ function AimTrainer() {
     return () => clearInterval(timerRef.current);
   }, [gameActive]);
 
-  
   useEffect(() => {
     if (gameActive) {
       spawnBall();
@@ -426,7 +445,6 @@ function AimTrainer() {
     };
   }, [gameActive, spawnBall]);
 
-  
   useEffect(() => {
     if (gameOver && !scoreSaved && score > 0) {
       saveScore({ score, hits, misses, accuracy, mode: "classic", duration });
@@ -447,19 +465,26 @@ function AimTrainer() {
   const showMuzzleFlash = useCallback(() => {
     const scene = sceneRef.current;
     if (!scene) return;
-    const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
+    const cam =
+      scene.querySelector("[camera]") || scene.querySelector("a-camera");
     if (!cam) return;
 
     // Create flash light (bright point light)
     const flash = document.createElement("a-entity");
     flash.setAttribute("position", "0.25 -0.15 -1.2");
-    flash.setAttribute("light", "type: point; color: #ffaa33; intensity: 3; distance: 5; decay: 2");
+    flash.setAttribute(
+      "light",
+      "type: point; color: #ffaa33; intensity: 3; distance: 5; decay: 2",
+    );
 
     // Create visible flash sprite (small bright sphere)
     const sprite = document.createElement("a-sphere");
     sprite.setAttribute("position", "0.25 -0.15 -1.2");
     sprite.setAttribute("radius", "0.04");
-    sprite.setAttribute("material", "color: #ffdd44; emissive: #ffaa00; emissiveIntensity: 3; transparent: true; opacity: 0.9");
+    sprite.setAttribute(
+      "material",
+      "color: #ffdd44; emissive: #ffaa00; emissiveIntensity: 3; transparent: true; opacity: 0.9",
+    );
     sprite.setAttribute("scale", "1 1 0.3");
 
     cam.appendChild(flash);
@@ -568,7 +593,8 @@ function AimTrainer() {
       // Disable look-controls so A-Frame doesn't re-lock the pointer
       const scene = sceneRef.current;
       if (scene) {
-        const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
+        const cam =
+          scene.querySelector("[camera]") || scene.querySelector("a-camera");
         if (cam) {
           cam.setAttribute("look-controls", "enabled", false);
         }
@@ -636,7 +662,7 @@ function AimTrainer() {
     clearInterval(timerRef.current);
     // Stop ball timeout so balls don't expire while paused
     if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
-    
+
     // Stop countdown if active
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
@@ -652,7 +678,8 @@ function AimTrainer() {
     // Disable look-controls so A-Frame doesn't re-lock the pointer
     const scene = sceneRef.current;
     if (scene) {
-      const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
+      const cam =
+        scene.querySelector("[camera]") || scene.querySelector("a-camera");
       if (cam) {
         cam.setAttribute("look-controls", "enabled", false);
       }
@@ -666,7 +693,8 @@ function AimTrainer() {
     // Re-enable look-controls
     const scene = sceneRef.current;
     if (scene) {
-      const cam = scene.querySelector("[camera]") || scene.querySelector("a-camera");
+      const cam =
+        scene.querySelector("[camera]") || scene.querySelector("a-camera");
       if (cam) {
         cam.setAttribute("look-controls", "enabled", true);
         // Immediate pointer lock on user click (20ms)
@@ -695,20 +723,25 @@ function AimTrainer() {
     }
   }, []);
 
-
   // ─── Pointer lock change listener ───
   useEffect(() => {
     const onLockChange = () => {
       const isLocked = !!document.pointerLockElement;
       setPointerLocked(isLocked);
-      
+
       // If user exits pointer lock (e.g. by ESC) and game is active, show settings immediately
-      if (!isLocked && gameActiveRef.current && !showSettingsRef.current && !gameOverRef.current) {
+      if (
+        !isLocked &&
+        gameActiveRef.current &&
+        !showSettingsRef.current &&
+        !gameOverRef.current
+      ) {
         pauseGame();
       }
     };
     document.addEventListener("pointerlockchange", onLockChange);
-    return () => document.removeEventListener("pointerlockchange", onLockChange);
+    return () =>
+      document.removeEventListener("pointerlockchange", onLockChange);
   }, [pauseGame]);
 
   // ─── P-key toggles settings menu (with pause/resume) ───
@@ -718,7 +751,7 @@ function AimTrainer() {
       if (e.key === "p" || e.key === "P" || e.key === "Escape") {
         // Don't toggle if typing in an input (relevant if we add name inputs etc later)
         if (e.target.tagName === "INPUT") return;
-        
+
         if (showSettings) {
           // Resume
           resumeGame();
@@ -736,7 +769,12 @@ function AimTrainer() {
   useEffect(() => {
     const checkFullscreen = () => {
       // If in fullscreen, exit immediately
-      if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+      if (
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      ) {
         if (document.exitFullscreen) {
           document.exitFullscreen().catch(() => {});
         } else if (document.webkitExitFullscreen) {
@@ -748,24 +786,27 @@ function AimTrainer() {
         }
       }
     };
-    
+
     // Check every 100ms if fullscreen was activated
     const interval = setInterval(checkFullscreen, 100);
-    
+
     // Also listen to fullscreen change events
     const onFullscreenChange = () => {
       setTimeout(checkFullscreen, 50);
     };
-    
+
     document.addEventListener("fullscreenchange", onFullscreenChange);
     document.addEventListener("webkitfullscreenchange", onFullscreenChange);
     document.addEventListener("mozfullscreenchange", onFullscreenChange);
     document.addEventListener("msfullscreenchange", onFullscreenChange);
-    
+
     return () => {
       clearInterval(interval);
       document.removeEventListener("fullscreenchange", onFullscreenChange);
-      document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
+      document.removeEventListener(
+        "webkitfullscreenchange",
+        onFullscreenChange,
+      );
       document.removeEventListener("mozfullscreenchange", onFullscreenChange);
       document.removeEventListener("msfullscreenchange", onFullscreenChange);
     };
@@ -809,7 +850,10 @@ function AimTrainer() {
 
         // Clamp pitch to avoid flipping
         const PI_2 = Math.PI / 2;
-        lc.pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, lc.pitchObject.rotation.x));
+        lc.pitchObject.rotation.x = Math.max(
+          -PI_2,
+          Math.min(PI_2, lc.pitchObject.rotation.x),
+        );
       };
 
       // Replace the method on the component (so A-Frame's tick/update calls ours)
@@ -846,22 +890,24 @@ function AimTrainer() {
 
     // Background (semi-transparent dark)
     ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-    ctx.roundRect ? ctx.roundRect(0, 0, 1024, 512, 40) : ctx.fillRect(0, 0, 1024, 512);
+    ctx.roundRect
+      ? ctx.roundRect(0, 0, 1024, 512, 40)
+      : ctx.fillRect(0, 0, 1024, 512);
     ctx.fill();
 
     // Text style
     ctx.fillStyle = "white";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    
+
     // Draw "Mängu autorid"
     ctx.font = "bold 80px sans-serif";
     ctx.fillText("M\u00e4ngu autorid", 512, 160);
-    
+
     // Draw "Markus L. ja Märt H."
     ctx.font = "60px sans-serif";
     ctx.fillText("Markus L. ja M\u00e4rt H.", 512, 280);
-    
+
     // Draw "VSo25"
     ctx.font = "bold 50px Courier";
     ctx.fillText("VSo25", 512, 400);
@@ -896,7 +942,7 @@ function AimTrainer() {
 
         const meshes = [];
         const gunObject3D = gunRef.current ? gunRef.current.object3D : null;
-        const sceneryEl = scene.querySelector('.set-design-scenery');
+        const sceneryEl = scene.querySelector(".set-design-scenery");
         const sceneryObject3D = sceneryEl ? sceneryEl.object3D : null;
         threeScene.traverse((child) => {
           if (child.isMesh) {
@@ -904,14 +950,20 @@ function AimTrainer() {
             if (gunObject3D) {
               let parent = child;
               while (parent) {
-                if (parent === gunObject3D) { isExcluded = true; break; }
+                if (parent === gunObject3D) {
+                  isExcluded = true;
+                  break;
+                }
                 parent = parent.parent;
               }
             }
             if (!isExcluded && sceneryObject3D) {
               let parent = child;
               while (parent) {
-                if (parent === sceneryObject3D) { isExcluded = true; break; }
+                if (parent === sceneryObject3D) {
+                  isExcluded = true;
+                  break;
+                }
                 parent = parent.parent;
               }
             }
@@ -925,7 +977,11 @@ function AimTrainer() {
         for (const hit of intersects) {
           let obj = hit.object;
           while (obj) {
-            if (obj.el && obj.el.classList && obj.el.classList.contains("ball-target")) {
+            if (
+              obj.el &&
+              obj.el.classList &&
+              obj.el.classList.contains("ball-target")
+            ) {
               hitBall = true;
               const currentBall = ballRef.current;
               if (currentBall) {
@@ -966,7 +1022,7 @@ function AimTrainer() {
 
       canvas.addEventListener("mousedown", onMouseDown);
       document.addEventListener("mouseup", onMouseUp);
-      
+
       canvas._aimCleanup = () => {
         canvas.removeEventListener("mousedown", onMouseDown);
         document.removeEventListener("mouseup", onMouseUp);
@@ -991,16 +1047,32 @@ function AimTrainer() {
           <div className="start-card-premium">
             {/* Top Accent Bar */}
             <div className="start-card-accent"></div>
-            
+
             <div className="start-card-inner">
               <div className="start-hero-mini">
                 <div className="hero-crosshair-wrap mini">
-                  <svg className="hero-crosshair-outer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    className="hero-crosshair-outer"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <circle cx="12" cy="12" r="10" />
                     <line x1="22" y1="12" x2="18" y2="12" />
                     <line x1="6" y1="12" x2="2" y2="12" />
                   </svg>
-                  <svg className="hero-crosshair-inner" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    className="hero-crosshair-inner"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <circle cx="12" cy="12" r="10" />
                     <circle cx="12" cy="12" r="6" />
                     <circle cx="12" cy="12" r="2" />
@@ -1019,7 +1091,9 @@ function AimTrainer() {
                 <div className="start-prompt-pulse"></div>
                 <div className="start-prompt-content">
                   <span className="start-prompt-icon">🎯</span>
-                  <span className="start-prompt-text">CLICK ANYWHERE TO START</span>
+                  <span className="start-prompt-text">
+                    CLICK ANYWHERE TO START
+                  </span>
                 </div>
               </div>
 
@@ -1037,58 +1111,57 @@ function AimTrainer() {
 
       {/* ─── HUD Overlay ─── */}
       {!waitingToStart && (
-      <div className="hud">
-        <div className="hud-left">
-          <div className="hud-item">
-            <span className="hud-label">Score</span>
-            <span className="hud-value score-val">{score}</span>
-          </div>
-          <div className="hud-item">
-            <span className="hud-label">Accuracy</span>
-            <span className="hud-value">{accuracy}%</span>
-          </div>
-        </div>
-
-        <div className="hud-center">
-          {countdown > 0 && (
-            <div className="countdown-display">{countdown}</div>
-          )}
-          {countdown <= 0 && !gameOver && !showSettings && (
-            <div className="timer-container-new">
-              <div
-                className={`timer-display ${timeLeft <= 5 ? "timer-danger" : ""}`}
-              >
-                {timeLeft}
-              </div>
-              <div className="timer-bar-wrapper">
-                <div 
-                  className={`timer-bar-fill ${timeLeft <= 5 ? "timer-bar-pulse" : ""}`}
-                  style={{ width: `${(timeLeft / duration) * 100}%` }}
-                ></div>
-              </div>
+        <div className="hud">
+          <div className="hud-left">
+            <div className="hud-item">
+              <span className="hud-label">Score</span>
+              <span className="hud-value score-val">{score}</span>
             </div>
-          )}
-          {showSettings && (
-            <div className="timer-display" style={{ color: "#ffaa00" }}>
-              ⏸ {timeLeft}
+            <div className="hud-item">
+              <span className="hud-label">Accuracy</span>
+              <span className="hud-value">{accuracy}%</span>
             </div>
-          )}
-        </div>
+          </div>
 
-        <div className="hud-right">
-          <div className="hud-item">
-            <span className="hud-label">Hits</span>
-            <span className="hud-value hit-val">{hits}</span>
+          <div className="hud-center">
+            {countdown > 0 && (
+              <div className="countdown-display">{countdown}</div>
+            )}
+            {countdown <= 0 && !gameOver && !showSettings && (
+              <div className="timer-container-new">
+                <div
+                  className={`timer-display ${timeLeft <= 5 ? "timer-danger" : ""}`}
+                >
+                  {timeLeft}
+                </div>
+                <div className="timer-bar-wrapper">
+                  <div
+                    className={`timer-bar-fill ${timeLeft <= 5 ? "timer-bar-pulse" : ""}`}
+                    style={{ width: `${(timeLeft / duration) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+            {showSettings && (
+              <div className="timer-display" style={{ color: "#ffaa00" }}>
+                ⏸ {timeLeft}
+              </div>
+            )}
           </div>
-          <div className="hud-item">
-            <span className="hud-label">Misses</span>
-            <span className="hud-value miss-val">{misses}</span>
+
+          <div className="hud-right">
+            <div className="hud-item">
+              <span className="hud-label">Hits</span>
+              <span className="hud-value hit-val">{hits}</span>
+            </div>
+            <div className="hud-item">
+              <span className="hud-label">Misses</span>
+              <span className="hud-value miss-val">{misses}</span>
+            </div>
           </div>
         </div>
-      </div>
       )}
 
-  
       {hitEffect && (
         <div
           className="hit-effect"
@@ -1106,8 +1179,6 @@ function AimTrainer() {
           draggable={false}
         />
       )}
-
-
 
       {showSettings && (
         <div className="settings-overlay">
@@ -1157,7 +1228,9 @@ function AimTrainer() {
                       setSoundEnabled(next);
                       if (next) {
                         setTimeout(() => {
-                          playSound("/models/fire.mp3");
+                          playSound(
+                            process.env.PUBLIC_URL + "/models/fire.mp3",
+                          );
                         }, 100);
                       }
                     }}
@@ -1187,10 +1260,10 @@ function AimTrainer() {
                       onChange={(e) => {
                         const newVol = parseFloat(e.target.value);
                         setSoundVolume(newVol);
-                        // Play a short preview sound (throttled/debounced implicitly by user interaction speed)
-                        // Using a manual new Audio here to ensure it uses the NEW volume immediately
                         try {
-                          const a = new Audio("/models/fire.mp3");
+                          const a = new Audio(
+                            process.env.PUBLIC_URL + "/models/fire.mp3",
+                          );
                           a.volume = newVol;
                           a.play().catch(() => {});
                         } catch (e) {}
@@ -1205,7 +1278,9 @@ function AimTrainer() {
                 </div>
               )}
 
-              <p className="settings-hint">Press <kbd>P</kbd> or <kbd>ESC</kbd> to resume</p>
+              <p className="settings-hint">
+                Press <kbd>P</kbd> or <kbd>ESC</kbd> to resume
+              </p>
 
               {/* Resume Button */}
               <button className="settings-resume-btn" onClick={resumeGame}>
@@ -1214,11 +1289,12 @@ function AimTrainer() {
 
               {/* Bottom Actions */}
               <div className="settings-bottom-actions">
-                <button 
+                <button
                   className="settings-action-btn"
                   onClick={() => {
                     clearInterval(timerRef.current);
-                    if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
+                    if (ballTimeoutRef.current)
+                      clearTimeout(ballTimeoutRef.current);
                     setGameOver(false);
                     setWaitingToStart(true);
                     setCountdown(0);
@@ -1236,11 +1312,12 @@ function AimTrainer() {
                 >
                   🔄 Restart
                 </button>
-                <button 
+                <button
                   className="settings-action-btn"
                   onClick={() => {
                     clearInterval(timerRef.current);
-                    if (ballTimeoutRef.current) clearTimeout(ballTimeoutRef.current);
+                    if (ballTimeoutRef.current)
+                      clearTimeout(ballTimeoutRef.current);
                     dispatch({ type: "SET_PAGE", payload: "home" });
                   }}
                 >
@@ -1253,8 +1330,7 @@ function AimTrainer() {
       )}
 
       <div className="scene-container">
-        <div className="waves-sky-bg">
-        </div>
+        <div className="waves-sky-bg"></div>
 
         <a-scene
           ref={sceneRef}
@@ -1264,7 +1340,6 @@ function AimTrainer() {
           renderer="alpha: true; antialias: true; colorManagement: true"
           style={{ width: "100%", height: "100%" }}
         >
-
           <a-light type="ambient" color="#ffffff" intensity="0.6" />
           <a-light
             type="directional"
@@ -1273,31 +1348,38 @@ function AimTrainer() {
             position="-4 8 -2"
             castShadow="true"
           />
-          <a-light type="hemisphere" color="#ffe0a0" groundColor="#aa8855" intensity="0.3" />
+          <a-light
+            type="hemisphere"
+            color="#ffe0a0"
+            groundColor="#aa8855"
+            intensity="0.3"
+          />
 
           <a-entity
-            gltf-model="/models/set-design.glb"
+            gltf-model={process.env.PUBLIC_URL + "/models/set-design.glb"}
             position="-30 -2 50"
             scale="1 1 1"
             class="set-design-scenery"
           />
 
           {/* ─── Environmental Scenery ─── */}
-          <a-sky color="#1a1a2e" animation="property: color; to: #16213e; dur: 8000; dir: alternate; loop: true" />
-          
+          <a-sky
+            color="#1a1a2e"
+            animation="property: color; to: #16213e; dur: 8000; dir: alternate; loop: true"
+          />
+
           {/* ─── Credits behind the player ─── */}
           <a-entity position="0 2 -10" rotation="0 0 0">
             {creditsUrl && (
-              <a-plane 
+              <a-plane
                 src={creditsUrl}
-                width="12" 
-                height="6" 
+                width="12"
+                height="6"
                 material="transparent: true; shader: flat"
                 position="0 0 0"
               />
             )}
           </a-entity>
-
 
           <a-entity position="0 0 0" rotation="0 180 0">
             <a-camera
@@ -1344,10 +1426,10 @@ function AimTrainer() {
           <div className="game-over-card">
             {/* Top Accent Bar */}
             <div className="game-over-accent"></div>
-            
+
             <div className="game-over-inner">
               <h2 className="game-over-title">TRAINING COMPLETE</h2>
-              
+
               <div className="stats-grid-new">
                 {/* Score Section */}
                 <div className="stat-card-new main-stat">
@@ -1410,8 +1492,8 @@ function AimTrainer() {
               )}
 
               <div className="game-over-actions-new">
-                <button 
-                  className="game-over-btn-primary" 
+                <button
+                  className="game-over-btn-primary"
                   onClick={() => {
                     setGameOver(false);
                     setWaitingToStart(true);
@@ -1430,17 +1512,21 @@ function AimTrainer() {
                   <span className="btn-icon">🔄</span>
                   PLAY AGAIN
                 </button>
-                
+
                 <div className="game-over-btns-row">
                   <button
                     className="game-over-btn-secondary"
-                    onClick={() => dispatch({ type: "SET_PAGE", payload: "home" })}
+                    onClick={() =>
+                      dispatch({ type: "SET_PAGE", payload: "home" })
+                    }
                   >
                     <span className="btn-icon-small">🏠</span> Home
                   </button>
                   <button
                     className="game-over-btn-secondary"
-                    onClick={() => dispatch({ type: "SET_PAGE", payload: "leaderboard" })}
+                    onClick={() =>
+                      dispatch({ type: "SET_PAGE", payload: "leaderboard" })
+                    }
                   >
                     <span className="btn-icon-small">🏆</span> Leaderboard
                   </button>
