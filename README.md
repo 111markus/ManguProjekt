@@ -1,101 +1,107 @@
 # 🎯 AimTrainer 3D
 
-A high-performance 3D aim training game built with **React**, **Three.js**, and **A-Frame**. Perfect for improving your shooting accuracy and reflexes!
+Jõudlusrikas 3D sihtimistreeningu mäng, mis on loodud Reacti, Three.js-i ja A-Frame'i abil. Sobib suurepäraselt sihtimise täpsuse ja reaktsioonikiiruse arendamiseks.
 
-## 🚀 Features
+## 🚀 Funktsioonid
 
-- **3D Interactive Game Environment** - Immersive 3D scenes with A-Frame
-- **Real-time HUD Display** - Score, hits, misses, and timer tracking
-- **Sound Effects** - Immersive audio feedback for hits and reloads
-- **Leaderboard System** - Global score tracking with database integration
-- **Customizable Game Modes** - Select different durations and difficulty levels
-- **Settings Menu** - Adjust sound, sensitivity, and game parameters
-- **Responsive Design** - Works on desktop and mobile devices
-- **Score Persistence** - Save and view your game statistics
+- **Interaktiivne 3D mängukeskkond** – kaasahaarav 3D maailm A-Frame'i toel
+- **Reaalajas HUD** – skoori, tabamuste, möödalaskude ja taimeri jälgimine
+- **Heliefektid** – tabamuste ja ümberlaadimise jaoks loodud heliline tagasiside
+- **Edetabeli süsteem** – globaalne tulemuste jälgimine andmebaasi integratsiooniga
+- **Kohandatavad mängurežiimid** – vali erineva kestuse ja raskusastmega režiimide vahel
+- **Seadete menüü** – heli, tundlikkuse ja teiste mänguparameetrite kohandamine
+- **Responsiivne disain** – töötab nii lauaarvutis kui ka mobiilseadmetes
+- **Tulemuste salvestamine** – salvesta ja vaata oma mängutulemusi
 
-## 📁 Project Structure
+## 📁 Projekti struktuur
 
 ```
 ManguProjekt/
-├── client/                 # React frontend
+├── client/                 # Reacti esiosa
 │   ├── src/
-│   │   ├── components/    # React components
-│   │   │   ├── AimTrainer.js      # Main game component
-│   │   │   ├── HomePage.js        # Home page
-│   │   │   └── Leaderboard.js     # Leaderboard view
-│   │   ├── context/       # React context
-│   │   │   └── GameContext.js     # Game state management
-│   │   ├── images/        # Asset images
-│   │   ├── App.js         # Main app component
-│   │   ├── App.css        # Global styles
-│   │   └── index.js       # Entry point
-│   └── public/            # Static assets
-│       └── models/        # 3D models and audio files
-├── server/                # Node.js backend
-│   ├── index.js          # Express server
-│   └── scores.json       # Leaderboard data
-└── package.json          # Root dependencies
+│   │   ├── components/     # Reacti komponendid
+│   │   │   ├── AimTrainer.js      # Põhimängu komponent
+│   │   │   ├── HomePage.js        # Avaleht
+│   │   │   └── Leaderboard.js     # Edetabeli vaade
+│   │   ├── context/        # Reacti kontekst
+│   │   │   └── GameContext.js     # Mängu oleku haldus
+│   │   ├── images/         # Pildifailid
+│   │   ├── App.js          # Rakenduse põhikomponent
+│   │   ├── App.css         # Globaalsed stiilid
+│   │   └── index.js        # Sisenemispunkt
+│   └── public/             # Staatilised failid
+│       └── models/         # 3D mudelid ja helifailid
+├── server/                 # Node.js taustarakendus
+│   ├── index.js            # Expressi server
+│   └── scores.json         # Edetabeli andmed
+└── package.json            # Projekti sõltuvused
 ```
 
-## 🛠️ Tech Stack
+## 🛠️ Tehnoloogiavirn
 
-- **Frontend**: React, Three.js, A-Frame, CSS3
-- **Backend**: Node.js, Express
-- **Database**: JSON (scores.json)
-- **Styling**: Custom CSS with glassmorphism effects
-- **3D Graphics**: Three.js, A-Frame entities
+- **Esiosa**: React, Three.js, A-Frame, CSS3
+- **Taust**: Node.js, Express
+- **Andmebaas**: JSON (scores.json)
+- **Kujundus**: kohandatud CSS klaasimorfismi efektidega
+- **3D-graafika**: Three.js ja A-Frame'i objektid
 
-## 📦 Installation
+## 📦 Paigaldamine
 
-### Prerequisites
-- Node.js (v14 or higher)
-- npm or yarn
+### Eeltingimused
 
-### Setup
+- Node.js (versioon 14 või uuem)
+- npm või yarn
 
-1. **Clone the repository**
+### Seadistamine
+
+1. **Klooni hoidla**
+
    ```bash
    git clone https://github.com/111markus/ManguProjekt.git
    cd ManguProjekt
    ```
 
-2. **Install root dependencies**
+2. **Paigalda juurkausta sõltuvused**
+
    ```bash
    npm install
    ```
 
-3. **Install client dependencies**
+3. **Paigalda kliendirakenduse sõltuvused**
+
    ```bash
    cd client
    npm install
    cd ..
    ```
 
-4. **Install server dependencies**
+4. **Paigalda serveri sõltuvused**
    ```bash
    cd server
    npm install
    cd ..
    ```
 
-## ▶️ Running the Project
+## ▶️ Projekti käivitamine
 
-### Development Mode
+### Arendusrežiimis
 
-1. **Start the backend server**
+1. **Käivita taustaserver**
+
    ```bash
    npm run server
    ```
-   Server runs on `http://localhost:5000`
 
-2. **In another terminal, start the React app**
+   Server käivitub aadressil `http://localhost:5000`
+
+2. **Käivita teises terminalis Reacti rakendus**
    ```bash
    cd client
    npm start
    ```
-   App runs on `http://localhost:3000`
+   Rakendus käivitub aadressil `http://localhost:3000`
 
-### Production Build
+### Tootmisversiooni ehitamine
 
 ```bash
 cd client
@@ -103,87 +109,56 @@ npm run build
 cd ..
 ```
 
-## 🎮 How to Play
+## 🎮 Kuidas mängida
 
-1. **Enter your name** on the home page
-2. **Select game duration** (30s, 60s, 90s, 120s)
-3. **Click START** to begin
-4. **Aim and click** on targets in the 3D environment
-5. **Track your score** in real-time on the HUD
-6. **View results** on the game over screen
-7. **Check leaderboard** to see top scores
+1. Sisesta avalehel oma nimi
+2. Vali mängu kestus (30 s, 60 s, 90 s või 120 s)
+3. Klõpsa nuppu START, et alustada
+4. Sihti ja klõpsa 3D keskkonnas olevaid sihtmärke
+5. Jälgi oma skoori reaalajas HUD-il
+6. Vaata tulemusi mängu lõpu ekraanilt
+7. Kontrolli edetabelit, et näha parimaid tulemusi
 
-## 🎛️ Controls
+## 🎛️ Juhtnupud
 
-- **Mouse Movement** - Aim (pointer locked during game)
-- **Click** - Shoot
-- **ESC** - Open settings menu
-- **SPACE** - Resume game
-- **R** - Restart level
+- **Hiire liigutamine** – sihtimine
+- **Hiireklõps** – laskmine
+- **ESC** – ava seadete menüü
+- **SPACE** – jätka mängu
+- **R** – taaskäivita tase
 
-## 📊 Leaderboard Features
+## 📊 Edetabeli funktsioonid
 
-- View top scores globally
-- Filter by player name
-- See score dates and times
-- Delete personal scores
-- Real-time score updates
+- Vaata mängijate parimaid tulemusi globaalses edetabelis
+- Filtreeri tulemusi mängija nime järgi
+- Vaata tulemuste kuupäevi ja kellaaegu
+- Kustuta isiklikke tulemusi
+- Reaalajas uuenevad tulemused
 
-## ⚙️ Settings
+## ⚙️ Seaded
 
-Customize your experience:
-- **Sound Toggle** - Enable/disable sound effects
-- **Sensitivity** - Adjust aim sensitivity
-- **Crosshair Size** - Customize crosshair appearance
+Kohanda mängukogemust:
 
-## 🎨 UI Design
+- **Heli** – lülita heliefektid sisse või välja
+- **Tundlikkus** – kohanda sihtimise tundlikkust
+- **Sihiku suurus** – muuda sihtimismärgi suurust ja välimust
 
-- Modern glassmorphism effects
-- Dark theme with red accents
-- Smooth animations and transitions
-- Responsive layout for all screen sizes
-- Custom fonts (Orbitron for UI, Inter for text)
+## 🎨 Kasutajaliidese disain
 
-## 🔗 API Endpoints
+- Kaasaegne klaasimorfismi efekt
+- Tume teema punaste aktsentidega
+- Sujuvad animatsioonid ja üleminekud
+- Responsiivne paigutus eri ekraanisuurustele
+- Kohandatud fondid: Orbitron kasutajaliidese jaoks ja Inter põhiteksti jaoks
 
-### Server Routes
-- `GET /api/scores` - Get all leaderboard scores
-- `POST /api/scores` - Save new score
-- `DELETE /api/scores/:id` - Delete a score
+## 👨‍💻 Arendajad
 
-## 📝 Asset Credits
+Loonud **Märt Hansschmidt** ja **111markus** | GitHub: [111markus/ManguProjekt](https://github.com/111markus/ManguProjekt)
 
-- **3D Models**: Set design and FPS rig models
-- **Audio**: Fire and reload sound effects
-- **Crosshair**: Custom designed SVG
+## 📧 Tagasiside & Tugi
 
-## 🐛 Known Issues
-
-- Large files in `node_modules` cache should be added to `.gitignore`
-- Mobile pointer lock support varies by browser
-
-## 🚀 Future Enhancements
-
-- [ ] Multiplayer modes
-- [ ] Different target types and difficulties
-- [ ] Advanced statistics and analytics
-- [ ] User authentication and accounts
-- [ ] Achievement system
-- [ ] Tournament mode
-- [ ] Custom game settings
-
-## 📜 License
-
-MIT License - Feel free to use this project for learning and personal use.
-
-## 👨‍💻 Developer
-
-Created by **111markus** | GitHub: [111markus/ManguProjekt](https://github.com/111markus/ManguProjekt)
-
-## 📧 Feedback & Support
-
-For issues, suggestions, or feedback, please open an issue on GitHub.
+Probleemide, soovituste või tagasiside puhul palun avage GitHub'is issue.
 
 ---
 
-**Happy Aiming! 🎯**
+**Head Sihtimist! 🎯**
