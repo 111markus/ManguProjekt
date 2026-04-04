@@ -8,9 +8,7 @@ Jõudlusrikas 3D sihtimistreeningu mäng, mis on loodud Reacti, Three.js-i ja A-
 - **Reaalajas HUD** – skoori, tabamuste, möödalaskude ja taimeri jälgimine
 - **Heliefektid** – tabamuste ja ümberlaadimise jaoks loodud heliline tagasiside
 - **Edetabeli süsteem** – globaalne tulemuste jälgimine andmebaasi integratsiooniga
-- **Kohandatavad mängurežiimid** – vali erineva kestuse ja raskusastmega režiimide vahel
 - **Seadete menüü** – heli, tundlikkuse ja teiste mänguparameetrite kohandamine
-- **Responsiivne disain** – töötab nii lauaarvutis kui ka mobiilseadmetes
 - **Tulemuste salvestamine** – salvesta ja vaata oma mängutulemusi
 
 ## 📁 Projekti struktuur
@@ -149,16 +147,5 @@ Kohanda mängukogemust:
 - Tume teema punaste aktsentidega
 - Sujuvad animatsioonid ja üleminekud
 - Responsiivne paigutus eri ekraanisuurustele
-- Kohandatud fondid: Orbitron kasutajaliidese jaoks ja Inter põhiteksti jaoks
-
-## 👨‍💻 Arendajad
-
-Loonud **Märt Hansschmidt** ja **111markus** | GitHub: [111markus/ManguProjekt](https://github.com/111markus/ManguProjekt)
-
-## 📧 Tagasiside & Tugi
-
-Probleemide, soovituste või tagasiside puhul palun avage GitHub'is issue.
-
----
 
 **Head Sihtimist! 🎯**
